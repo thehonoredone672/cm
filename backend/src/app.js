@@ -16,6 +16,26 @@ const cookieParser =
 const authRoutes =
   require("./modules/auth/auth.routes");
 
+const userRoutes =
+  require(
+    "./modules/users/users.routes"
+  );
+
+const skillRoutes =
+  require(
+    "./modules/skills/skills.routes"
+  );
+
+const interestRoutes =
+  require(
+    "./modules/interests/interests.routes"
+  );
+
+const matchRoutes =
+  require(
+    "./modules/matches/matches.routes"
+  );
+
 const app = express();
 
 app.use(helmet());
@@ -48,6 +68,26 @@ app.get(
 app.use(
   "/api/auth",
   authRoutes
+);
+
+app.use(
+  "/api/users",
+  userRoutes
+);
+
+app.use(
+  "/api/skills",
+  skillRoutes
+);
+
+app.use(
+  "/api/interests",
+  interestRoutes
+);
+
+app.use(
+  "/api/matches",
+  matchRoutes
 );
 
 module.exports = app;

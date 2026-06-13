@@ -1,0 +1,44 @@
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIyZDI0MDBkZC00ZTUwLTQ5NzgtYWExOS1lMTdmMDJhODVmNWEiLCJpYXQiOjE3ODEyNzgxMjMsImV4cCI6MTc4MTg4MjkyM30.IGhhv6G_N4EEkosvqIfu0klZTGLyj_dwq5V82R0WyNc
+
+johan-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlNjIxZDllZi1kNmE5LTQzYjktYmNjNS1mNTBiYTJkY2M0ZjUiLCJpYXQiOjE3ODEzNTI3MzksImV4cCI6MTc4MTk1NzUzOX0.Vdo-WSNvEZUaawxNGTm6dX4Zd2s150-6i0_eA2iExNs 
+
+{
+  "email": "luffy@gmail.com",
+  "password": "123456"
+}
+
+{
+    "success": true,
+    "data": [
+        {
+            "id": "be055c73-af79-4dde-a5da-85583c99f8c2",
+            "name": "Node.js"
+        },
+        {
+            "id": "328b8ca9-30ae-4887-9534-86a865a4a323",
+            "name": "PostgreSQL"
+        },
+        {
+            "id": "c5e5c27b-3133-40b1-99d6-148d2604414d",
+            "name": "React"
+        }
+    ]
+}
+
+{
+    "success": true,
+    "data": [
+        {
+            "id": "b96c7217-79fb-4867-8265-222ed64dc20e",
+            "name": "Hackathons"
+        },
+        {
+            "id": "3c2e8aa8-4e0f-4a85-b8b3-47bf5cd12e0f",
+            "name": "Open Source"
+        },
+        {
+            "id": "e4ff0ea2-e489-4a47-9645-c20ea9766e5f",
+            "name": "Web Development"
+        }
+    ]
+}
