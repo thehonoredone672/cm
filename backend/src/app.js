@@ -16,6 +16,11 @@ const cookieParser =
 const authRoutes =
   require("./modules/auth/auth.routes");
 
+const teamRequestRoutes =
+  require(
+    "./modules/teamRequests/teamRequests.routes"
+  );
+
 const userRoutes =
   require(
     "./modules/users/users.routes"
@@ -34,6 +39,11 @@ const interestRoutes =
 const matchRoutes =
   require(
     "./modules/matches/matches.routes"
+  );
+
+const applicationRoutes =
+  require(
+    "./modules/applications/applications.routes"
   );
 
 const app = express();
@@ -88,6 +98,16 @@ app.use(
 app.use(
   "/api/matches",
   matchRoutes
+);
+
+app.use(
+  "/api/team-requests",
+  teamRequestRoutes
+);
+
+app.use(
+  "/api/applications",
+  applicationRoutes
 );
 
 module.exports = app;
