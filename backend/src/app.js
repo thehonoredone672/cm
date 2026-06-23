@@ -46,6 +46,16 @@ const applicationRoutes =
     "./modules/applications/applications.routes"
   );
 
+const errorMiddleware =
+  require(
+    "./middleware/errorMiddleware"
+  );
+
+const chatRoutes =
+  require(
+    "./modules/chat/chat.routes"
+  );
+
 const app = express();
 
 app.use(helmet());
@@ -109,5 +119,12 @@ app.use(
   "/api/applications",
   applicationRoutes
 );
+
+app.use(
+  "/api/chat",
+  chatRoutes
+);
+
+app.use(errorMiddleware);
 
 module.exports = app;

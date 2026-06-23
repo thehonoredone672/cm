@@ -1,3 +1,5 @@
+const asyncHandler = require("../../utils/asyncHandler");
+
 const {
   applyToTeamRequest,
   getMyApplications,
@@ -5,10 +7,8 @@ const {
   updateApplicationStatus,
 } = require("./applications.service");
 
-const applyHandler = async (
-  req,
-  res
-) => {
+const applyHandler = asyncHandler(
+  async (req, res) => {
   const { teamRequestId } =
     req.body;
 
@@ -17,14 +17,14 @@ const applyHandler = async (
       req.user.id,
       teamRequestId
     );
+res.status(201).json({
+  success: true,
+  data: application,
+});
+}
+);
 
-  res.status(201).json({
-    success: true,
-    data: application,
-  });
-};
-
-const myApplicationsHandler =
+const myApplicationsHandler = asyncHandler(
   async (req, res) => {
     const applications =
       await getMyApplications(
@@ -35,9 +35,10 @@ const myApplicationsHandler =
       success: true,
       data: applications,
     });
-  };
+  }
+);
 
-const teamApplicationsHandler =
+const teamApplicationsHandler = asyncHandler(
   async (req, res) => {
     const applications =
       await getApplicationsForTeamRequest(
@@ -48,21 +49,24 @@ const teamApplicationsHandler =
       success: true,
       data: applications,
     });
-  };
+  }
+);
 
-const updateStatusHandler =
+const updateStatusHandler = asyncHandler(
   async (req, res) => {
     const application =
       await updateApplicationStatus(
         req.params.id,
-        req.body.status
-      );
+        req.body.status,
+        req.user.id
+        );
 
     res.status(200).json({
       success: true,
       data: application,
     });
-  };
+  }
+);
 
 module.exports = {
   applyHandler,

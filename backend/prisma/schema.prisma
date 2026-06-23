@@ -19,48 +19,10 @@ enum EducationType {
   SELF_LEARNER
 }
 
-model Skill {
-  id        String @id @default(uuid())
-
-  name      String @unique
-
-  users     UserSkill[]
-}
-
-model UserSkill {
-  id        String @id @default(uuid())
-
-  userId    String
-
-  skillId   String
-
-  user      User @relation(fields: [userId], references: [id])
-
-  skill     Skill @relation(fields: [skillId], references: [id])
-
-  @@unique([userId, skillId])
-}
-
-model Interest {
-  id        String @id @default(uuid())
-
-  name      String @unique
-
-  users     UserInterest[]
-}
-
-model UserInterest {
-  id          String @id @default(uuid())
-
-  userId      String
-
-  interestId  String
-
-  user        User @relation(fields: [userId], references: [id])
-
-  interest    Interest @relation(fields: [interestId], references: [id])
-
-  @@unique([userId, interestId])
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
 
 model User {
@@ -85,28 +47,80 @@ model User {
   educationType EducationType?
 
   schoolName    String?
+
   standard      Int?
 
   college       String?
+
   department    String?
+
   academicYear  Int?
 
   company       String?
+
   position      String?
 
   profession    String?
 
- skills UserSkill[]
+  skills        UserSkill[]
 
-  interests UserInterest[]
+  interests     UserInterest[]
 
-  teamRequests TeamRequest[]
+  teamRequests  TeamRequest[]
 
-  applications Application[]
+  applications  Application[]
 
-  createdAt DateTime @default(now())
+  messages      Message[]
 
-  updatedAt DateTime @updatedAt
+  conversations ConversationParticipant[]
+
+  createdAt     DateTime @default(now())
+
+  updatedAt     DateTime @updatedAt
+}
+
+model Skill {
+  id    String @id @default(uuid())
+
+  name  String @unique
+
+  users UserSkill[]
+}
+
+model UserSkill {
+  id      String @id @default(uuid())
+
+  userId  String
+
+  skillId String
+
+  user    User  @relation(fields: [userId], references: [id])
+
+  skill   Skill @relation(fields: [skillId], references: [id])
+
+  @@unique([userId, skillId])
+}
+
+model Interest {
+  id    String @id @default(uuid())
+
+  name  String @unique
+
+  users UserInterest[]
+}
+
+model UserInterest {
+  id         String @id @default(uuid())
+
+  userId     String
+
+  interestId String
+
+  user       User     @relation(fields: [userId], references: [id])
+
+  interest   Interest @relation(fields: [interestId], references: [id])
+
+  @@unique([userId, interestId])
 }
 
 model TeamRequest {
@@ -122,23 +136,17 @@ model TeamRequest {
 
   status      String   @default("OPEN")
 
-  createdAt   DateTime @default(now())
-
-  updatedAt   DateTime @updatedAt
-
   creator     User @relation(fields: [creatorId], references: [id])
 
   applications Application[]
-}
 
-enum ApplicationStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
+  createdAt   DateTime @default(now())
+
+  updatedAt   DateTime @updatedAt
 }
 
 model Application {
-  id            String   @id @default(uuid())
+  id            String @id @default(uuid())
 
   teamRequestId String
 
@@ -146,11 +154,53 @@ model Application {
 
   status        ApplicationStatus @default(PENDING)
 
-  createdAt     DateTime @default(now())
-
-  updatedAt     DateTime @updatedAt
-
   teamRequest   TeamRequest @relation(fields: [teamRequestId], references: [id])
 
   applicant     User @relation(fields: [applicantId], references: [id])
+
+  createdAt     DateTime @default(now())
+
+  updatedAt     DateTime @updatedAt
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  participants ConversationParticipant[]
+
+  messages Message[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+}
+
+model ConversationParticipant {
+  id             String @id @default(uuid())
+
+  conversationId String
+
+  userId         String
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  user           User @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String @id @default(uuid())
+
+  conversationId String
+
+  senderId       String
+
+  text           String
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  sender         User @relation(fields: [senderId], references: [id])
+
+  createdAt      DateTime @default(now())
 }

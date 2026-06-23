@@ -77,7 +77,8 @@ const getApplicationsForTeamRequest =
 const updateApplicationStatus =
   async (
     applicationId,
-    status
+    status,
+    currentUserId
   ) => {
 
     const application =
@@ -85,11 +86,24 @@ const updateApplicationStatus =
         where: {
           id: applicationId,
         },
+
+        include: {
+          teamRequest: true,
+        },
       });
 
     if (!application) {
       throw new Error(
         "Application not found"
+      );
+    }
+
+    if (
+      application.teamRequest.creatorId !==
+      currentUserId
+    ) {
+      throw new Error(
+        "Not authorized"
       );
     }
 
@@ -103,6 +117,8 @@ const updateApplicationStatus =
       },
     });
   };
+
+
 module.exports = {
   applyToTeamRequest,
   getMyApplications,
