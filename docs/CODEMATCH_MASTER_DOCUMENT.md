@@ -239,3 +239,309 @@ Examples:
 - Open Source
 
 Users can attach multiple interests to their profile.
+
+## Matching Engine V2
+
+CodeMatch uses a weighted Jaccard Similarity algorithm.
+
+Purpose:
+
+Measure how similar two users are based on their skills and interests.
+
+Formula:
+
+Skill Similarity =
+Shared Skills / Total Unique Skills
+
+Interest Similarity =
+Shared Interests / Total Unique Interests
+
+Final Score:
+
+(Skill Similarity × 70)
++
+(Interest Similarity × 30)
+
+Reasoning:
+
+Skills are more important than interests when forming project teams.
+
+Weights:
+
+* Skills = 70%
+* Interests = 30%
+
+Advantages:
+
+* Prevents inflated scores
+* Produces realistic compatibility values
+* Scales well for future recommendation systems
+
+### Team Request System
+
+Purpose:
+
+Allow students to create project, startup, study, or hackathon opportunities.
+
+Examples:
+
+* Looking for React Developer
+* Need Backend Developer for Startup MVP
+* Seeking Hackathon Team Members
+
+Workflow:
+
+User
+↓
+Creates Team Request
+↓
+Other Users View Request
+↓
+Apply
+↓
+Creator Accepts
+↓
+Team Formation
+
+### Application System
+
+Purpose:
+
+Allow users to apply to join a Team Request.
+
+Workflow:
+
+Team Request
+↓
+Application Created
+↓
+Request Owner Reviews
+↓
+Accept / Reject
+
+Statuses:
+
+* PENDING
+* ACCEPTED
+* REJECTED
+
+### Application Status
+
+ApplicationStatus Enum
+
+Values:
+
+* PENDING
+* ACCEPTED
+* REJECTED
+
+Purpose:
+
+Prevent invalid application states and enforce workflow consistency.
+
+### Team Formation Workflow
+
+User A
+Creates Team Request
+
+↓
+
+User B
+Applies
+
+↓
+
+Application Created
+
+↓
+
+Team Owner Reviews
+
+↓
+
+Accept / Reject
+
+↓
+
+Team Formation
+
+### Error Handling Architecture
+
+Request
+↓
+Route
+↓
+Controller
+↓
+Service
+↓
+Database
+
+If Error Occurs
+
+↓
+
+Global Error Middleware
+
+Returns Standard Response
+
+{
+success: false,
+message: "Error Message"
+}
+
+# Chat System Architecture
+
+Purpose:
+
+Allow matched users and team members to communicate in real time.
+
+---
+
+User
+|
+▼
+ConversationParticipant
+|
+▼
+Conversation
+|
+▼
+Messages
+
+---
+
+Database Models
+
+Conversation
+
+Stores chat rooms.
+
+ConversationParticipant
+
+Stores which users belong to a conversation.
+
+Message
+
+Stores chat messages.
+
+---
+
+API Flow
+
+Create Conversation
+↓
+Join Participants
+↓
+Send Message
+↓
+Store Message
+↓
+Retrieve Chat History
+
+---
+
+Security Rules
+
+Only participants can:
+
+* View conversations
+* View messages
+* Send messages
+
+Non-participants receive:
+
+{
+"success": false,
+"message": "Not authorized"
+}
+
+---
+
+Future Upgrades
+
+Phase 2
+
+* Realtime messaging (Socket.IO)
+* Online status
+* Typing indicators
+* Read receipts
+
+Phase 3
+
+* Team group chats
+* File sharing
+* Voice messages
+* Notifications
+
+### Realtime Messaging Architecture
+
+Client
+  ↓
+Socket.IO
+  ↓
+Node.js Server
+  ↓
+Socket Rooms
+  ↓
+Connected Clients
+
+Events:
+
+connection
+
+join_conversation
+
+send_message
+
+receive_message
+
+disconnect
+
+### Realtime Chat Flow
+
+User A
+↓
+Send Message
+
+↓
+
+REST API
+
+↓
+
+PostgreSQL
+
+↓
+
+Socket.IO Event
+
+↓
+
+User B Receives Instantly
+
+Benefits:
+
+* No page refresh
+* Live messaging
+* Scalable architecture
+
+# MVP Completion Status
+
+Backend Features
+
+Authentication             Completed
+Profiles                   Completed
+Skills                     Completed
+Interests                  Completed
+Matching Engine            Completed
+Team Requests              Completed
+Applications               Completed
+Chat APIs                  Completed
+Realtime Foundation        Completed
+
+Next Layer
+
+Frontend Development
+Deployment
+User Testing

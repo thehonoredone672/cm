@@ -271,3 +271,322 @@ DELETE /api/skills/user/:skillId
 Status:
 
 Completed
+
+## Phase 4.6 Interests
+
+Completed
+
+Tables:
+- interests
+- user_interests
+
+Endpoints:
+
+POST /api/interests
+
+GET /api/interests
+
+POST /api/interests/user
+
+GET /api/interests/user
+
+DELETE /api/interests/user/:interestId
+
+Purpose:
+
+Used for compatibility matching.
+
+## Matching Engine Upgrade
+
+Previous Version:
+
+Shared Skills / Current User Skills
+
+Issue:
+
+Produced inflated compatibility scores.
+
+Example:
+
+User A:
+Node.js
+
+User B:
+Node.js
+React
+
+Result:
+100%
+
+Improved Version:
+
+Weighted Jaccard Similarity
+
+Benefits:
+
+* More realistic scores
+* Better recommendations
+* Better team formation
+
+Status:
+
+Completed
+
+## Phase 4.8 Team Requests
+
+Database Layer Completed
+
+New Model:
+
+TeamRequest
+
+Fields:
+
+* id
+* creatorId
+* title
+* description
+* duration
+* status
+* createdAt
+* updatedAt
+
+Relationship:
+
+User (1) -> (Many) TeamRequests
+
+Migration:
+
+add_team_requests
+
+Status:
+
+Database Completed
+Backend APIs Pending
+
+## Phase 4.9 Applications
+
+Started
+
+Database Model:
+
+Application
+
+Relationship:
+
+User
+↔
+Application
+↔
+TeamRequest
+
+Status:
+
+Database Design In Progress
+
+## Application Status Upgrade
+
+Changed:
+
+status String
+
+To:
+
+status ApplicationStatus
+
+Benefits:
+
+* Strong validation
+* Cleaner business logic
+* Prevents invalid values
+
+Status:
+
+Completed
+
+## Phase 4.9 Applications
+
+Service Layer Started
+
+Functions:
+
+* applyToTeamRequest()
+* getMyApplications()
+* getApplicationsForTeamRequest()
+* updateApplicationStatus()
+
+Status:
+
+Service Layer Completed
+
+
+## Phase 4.9 Applications Testing
+
+Test Scenario
+
+Luffy:
+Created Team Request
+
+John:
+Applied to Team Request
+
+Application:
+Status = PENDING
+
+Luffy:
+Viewed Applicants
+
+Luffy:
+Accepted Application
+
+Final Result:
+
+Application Status = ACCEPTED
+
+Status:
+
+Completed
+
+## Phase 4.9.5 Backend Hardening
+
+Completed:
+
+* AppError Class
+* Async Handler
+* Global Error Middleware
+
+Purpose:
+
+Centralized error handling across the entire backend.
+
+Benefits:
+
+* Cleaner API responses
+* Easier debugging
+* Production readiness
+
+## Phase 5.0 - Chat System
+
+### Database Models Added
+
+* Conversation
+* ConversationParticipant
+* Message
+
+### APIs Implemented
+
+#### Conversation APIs
+
+POST /api/chat/conversation
+
+Creates a conversation between two users.
+
+GET /api/chat/conversation
+
+Returns all conversations for the logged-in user.
+
+#### Message APIs
+
+POST /api/chat/message/:conversationId
+
+Sends a message inside a conversation.
+
+GET /api/chat/message/:conversationId
+
+Returns all messages in a conversation.
+
+### Security Improvements
+
+Implemented participant validation.
+
+Rules:
+
+* Only conversation participants can view messages.
+* Only conversation participants can send messages.
+* Unauthorized users receive:
+
+{
+"success": false,
+"message": "Not authorized"
+}
+
+### Testing Completed
+
+Luffy → John
+
+Conversation Created ✅
+
+Message Sent ✅
+
+Message Retrieved ✅
+
+John Replied ✅
+
+Conversation History Retrieved ✅
+
+Sarah Access Blocked ✅
+
+Status:
+
+Completed
+
+## Phase 5.1 Socket.IO Foundation
+
+Completed:
+
+- Socket.IO Installed
+- Socket Server Initialized
+- Conversation Rooms
+- Realtime Event System
+
+Events:
+
+connection
+join_conversation
+send_message
+receive_message
+disconnect
+
+Status:
+Foundation Completed
+
+## Phase 5.1 Realtime Messaging
+
+Socket.IO integrated with chat service.
+
+Flow:
+
+Send Message
+↓
+Save To PostgreSQL
+↓
+Emit receive_message Event
+↓
+Deliver To Connected Participants
+
+Status:
+
+Completed
+
+## Backend MVP Milestone
+
+Completed Modules
+
+* Authentication
+* User Profiles
+* Skills
+* Interests
+* Matching
+* Team Requests
+* Applications
+* Chat APIs
+* Chat Security
+* Socket.IO Foundation
+
+Backend MVP Status:
+
+Completed
+
+Next Phase:
+
+Minimal React Frontend
