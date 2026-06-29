@@ -1,25 +1,77 @@
 *{
+
     margin:0;
+
     padding:0;
+
     box-sizing:border-box;
+
+}
+
+html{
+
+    scroll-behavior:smooth;
+
 }
 
 body{
-    font-family:Arial,sans-serif;
-    background:#f4f4f4;
+
+    background:var(--background);
+
+    color:var(--text-primary);
+
+    font-family:Inter,Arial,sans-serif;
+
+    transition:var(--transition);
+
+}
+
+a{
+
+    text-decoration:none;
+
+    color:inherit;
+
 }
 
 button{
+
+    border:none;
+
     cursor:pointer;
+
+    font-family:inherit;
+
 }
 
-input{
-    padding:10px;
+input,
+textarea,
+select{
+
+    font-family:inherit;
+
+    outline:none;
+
 }
 
-.form-group{
-    display:flex;
-    flex-direction:column;
-    gap:5px;
-    margin-bottom:15px;
+img{
+
+    max-width:100%;
+
+    display:block;
+
+}
+
+ul{
+
+    list-style:none;
+
+}
+
+.container{
+
+    width:min(1200px,92%);
+
+    margin:auto;
+
 }

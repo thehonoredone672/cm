@@ -28,7 +28,7 @@ export default function Login() {
                 const data = await login(form);
 
                 console.log("Login Success:", data);
-
+ 
                 localStorage.setItem("token", data.token);
 
                 // We'll replace this with AuthContext in the next step
