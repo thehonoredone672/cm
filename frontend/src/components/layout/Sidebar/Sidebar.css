@@ -1,0 +1,26 @@
+.sidebar {
+  width: 220px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+
+  padding: 20px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sidebar a {
+  color: var(--text-secondary);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.sidebar a:hover {
+  background: #eef4ff;
+}
+
+.sidebar a.active {
+  background: var(--primary);
+  color: white;
+}

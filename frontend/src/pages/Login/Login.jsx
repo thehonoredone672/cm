@@ -1,8 +1,8 @@
 import { useState } from "react";
 import "../../styles/auth.css";
 
-import Input from "../../components/common/Input";
-import Button from "../../components/common/Button";
+import Input from "../../components/common/Input/Input";
+import Button from "../../components/common/Button/Button";
 
 export default function Login() {
 
