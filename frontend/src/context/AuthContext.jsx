@@ -1,17 +1,21 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { loginUser, getProfile } from "../services/authService";
+import { getProfile } from "../services/authService";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     restoreSession();
   }, []);
 
-  const restoreSession = async () => {
+  async function restoreSession() {
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -20,39 +24,43 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      const profile = await getProfile();
-      setUser(profile);
+      const response = await getProfile();
+
+      // Backend returns { success, data: { user } }
+      const loggedInUser = response.data?.user || response.user || response;
+
+      setUser(loggedInUser);
+      localStorage.setItem("user", JSON.stringify(loggedInUser));
     } catch (error) {
       console.error(error);
+
       localStorage.removeItem("token");
+      localStorage.removeItem("user");
+
       setUser(null);
     }
 
     setLoading(false);
-  };
+  }
 
-  const login = async (credentials) => {
-    const data = await loginUser(credentials);
+  function login(userData) {
+    setUser(userData);
+    localStorage.setItem("user", JSON.stringify(userData));
+  }
 
-    localStorage.setItem("token", data.token);
-
-    setUser(data.user);
-
-    return data;
-  };
-
-  const logout = () => {
+  function logout() {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
-  };
+  }
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        loading,
         login,
         logout,
-        loading,
         isAuthenticated: !!user,
       }}
     >

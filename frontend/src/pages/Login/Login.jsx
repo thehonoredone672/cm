@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 
 import "../../styles/auth.css";
 
+import { useAuth } from "../../context/AuthContext";
+
 import Input from "../../components/common/Input/Input";
 import Button from "../../components/common/Button/Button";
 
@@ -10,6 +12,8 @@ import { loginUser } from "../../services/authService";
 
 export default function Login() {
   const navigate = useNavigate();
+
+  const { login } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
@@ -31,16 +35,23 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const data = await loginUser(form);
+      const response = await loginUser(form);
 
-     console.log("===============");
-     console.log("Login Response");
-     console.log(data);
-     console.log("===============");
+      console.log("Login Response:", response);
 
-      alert("Login Successful");
+      if (!response.success) {
+        alert("Login Failed");
+        return;
+      }
 
-      navigate("/");
+      const { token, user } = response.data;
+
+      localStorage.setItem("token", token);
+
+      login(user);
+
+      navigate("/", { replace: true });
+
     } catch (error) {
       console.error(error);
 
