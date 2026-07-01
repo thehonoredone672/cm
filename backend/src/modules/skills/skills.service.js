@@ -39,8 +39,20 @@ const addSkillToUser = async (
     });
 
   if (!skill) {
+    throw new Error("Skill not found");
+  }
+
+  const existing =
+    await prisma.userSkill.findFirst({
+      where: {
+        userId,
+        skillId,
+      },
+    });
+
+  if (existing) {
     throw new Error(
-      "Skill not found"
+      "Skill already added"
     );
   }
 
