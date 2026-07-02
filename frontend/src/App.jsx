@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import Profile from "./pages/Profile/Profile";
 import Skills from "./pages/Skills/Skills";
 import Interests from "./pages/Interests/Interests";
+import Matches from "./pages/Matches/Matches";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -62,6 +63,16 @@ function App() {
           }
         />
         
+        <Route
+          path="/matches"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Matches />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
 
       </Routes>
     </BrowserRouter>

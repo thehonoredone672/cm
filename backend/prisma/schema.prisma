@@ -72,6 +72,10 @@ model User {
 
   messages      Message[]
 
+  sentInvites TeamInvite[] @relation("InviteSender")
+
+  receivedInvites TeamInvite[] @relation("InviteReceiver")
+
   conversations ConversationParticipant[]
 
   createdAt     DateTime @default(now())
@@ -203,4 +207,36 @@ model Message {
   sender         User @relation(fields: [senderId], references: [id])
 
   createdAt      DateTime @default(now())
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model TeamInvite {
+  id         String       @id @default(uuid())
+
+  senderId   String
+  receiverId String
+
+  message    String?
+
+  status     InviteStatus @default(PENDING)
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  sender User @relation(
+    "InviteSender",
+    fields: [senderId],
+    references: [id]
+  )
+
+  receiver User @relation(
+    "InviteReceiver",
+    fields: [receiverId],
+    references: [id]
+  )
 }
