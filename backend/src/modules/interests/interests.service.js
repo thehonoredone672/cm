@@ -39,8 +39,20 @@ const addInterestToUser = async (
     });
 
   if (!interest) {
+    throw new Error("Interest not found");
+  }
+
+  const existing =
+    await prisma.userInterest.findFirst({
+      where: {
+        userId,
+        interestId,
+      },
+    });
+
+  if (existing) {
     throw new Error(
-      "Interest not found"
+      "Interest already added"
     );
   }
 

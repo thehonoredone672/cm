@@ -5,6 +5,7 @@ import Register from "./pages/Register/Register";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import Profile from "./pages/Profile/Profile";
 import Skills from "./pages/Skills/Skills";
+import Interests from "./pages/Interests/Interests";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -47,6 +48,17 @@ function App() {
                       <Skills/>
                   </MainLayout>
               </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/interests"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Interests />
+              </MainLayout>
+            </ProtectedRoute>
           }
         />
         
