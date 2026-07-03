@@ -1,0 +1,175 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0, 0, 0, .45);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  z-index: 999;
+}
+
+.invite-modal {
+
+  width: 500px;
+  max-width: 95%;
+
+  background: white;
+
+  border-radius: 12px;
+
+  padding: 24px;
+
+  box-shadow: 0 12px 40px rgba(0,0,0,.25);
+
+  animation: popup .25s ease;
+}
+
+@keyframes popup {
+
+  from{
+    transform:scale(.9);
+    opacity:0;
+  }
+
+  to{
+    transform:scale(1);
+    opacity:1;
+  }
+
+}
+
+.modal-header{
+
+display:flex;
+justify-content:space-between;
+align-items:center;
+
+margin-bottom:20px;
+
+}
+
+.modal-header h2{
+
+margin:0;
+
+}
+
+.close-btn{
+
+border:none;
+background:none;
+
+font-size:22px;
+
+cursor:pointer;
+
+}
+
+.invite-modal label{
+
+display:block;
+
+margin-bottom:10px;
+
+font-weight:600;
+
+}
+
+.invite-modal textarea{
+
+width:100%;
+
+resize:none;
+
+padding:12px;
+
+font-size:15px;
+
+border-radius:8px;
+
+border:1px solid #ddd;
+
+margin-bottom:20px;
+
+font-family:inherit;
+
+}
+
+.modal-actions{
+
+display:flex;
+
+justify-content:flex-end;
+
+gap:12px;
+
+}
+
+.cancel-btn{
+
+background:#e5e7eb;
+
+border:none;
+
+padding:10px 18px;
+
+border-radius:8px;
+
+cursor:pointer;
+
+font-weight:600;
+
+}
+
+.send-btn{
+
+background:#2563eb;
+
+color:white;
+
+border:none;
+
+padding:10px 18px;
+
+border-radius:8px;
+
+cursor:pointer;
+
+font-weight:600;
+
+}
+
+.send-btn:hover{
+
+background:#1d4ed8;
+
+}
+
+.cancel-btn:hover{
+
+background:#d1d5db;
+
+}
+
+.success{
+
+margin-bottom:16px;
+
+color:#16a34a;
+
+font-weight:600;
+
+}
+
+.error{
+
+margin-bottom:16px;
+
+color:#dc2626;
+
+font-weight:600;
+
+}

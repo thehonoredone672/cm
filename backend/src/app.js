@@ -56,6 +56,11 @@ const chatRoutes =
     "./modules/chat/chat.routes"
   );
 
+
+const teamInviteRoutes = require(
+  "./modules/teamInvites/teamInvites.routes"
+);
+
 const app = express();
 
 app.use(helmet());
@@ -123,6 +128,11 @@ app.use(
 app.use(
   "/api/chat",
   chatRoutes
+);
+
+app.use(
+  "/api/team-invites",
+  teamInviteRoutes
 );
 
 app.use(errorMiddleware);
