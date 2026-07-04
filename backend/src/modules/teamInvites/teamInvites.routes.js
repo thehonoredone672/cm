@@ -4,6 +4,12 @@ const {
   protect,
 } = require("../../middleware/authMiddleware");
 
+const validate = require("../../middleware/validate");
+
+const {
+  sendInviteSchema,
+} = require("./teamInvites.validation");
+
 const {
   sendInviteHandler,
   getSentInvitesHandler,
@@ -17,6 +23,7 @@ const router = express.Router();
 router.post(
   "/",
   protect,
+  validate(sendInviteSchema),
   sendInviteHandler
 );
 

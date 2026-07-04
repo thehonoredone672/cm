@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "./Matches.css";
 
+import InviteModal from "../../components/InviteModal/InviteModal";
 import { getMatches } from "../../services/matchService";
 
 export default function Matches() {
@@ -8,6 +9,9 @@ export default function Matches() {
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState(null);
 
   useEffect(() => {
     loadMatches();
@@ -39,6 +43,16 @@ export default function Matches() {
     if (score >= 60) return "good";
     if (score >= 40) return "average";
     return "poor";
+  }
+
+  function openInviteModal(user) {
+    setSelectedMatch(user);
+    setInviteOpen(true);
+  }
+
+  function closeInviteModal() {
+    setInviteOpen(false);
+    setSelectedMatch(null);
   }
 
   if (loading) {
@@ -170,8 +184,11 @@ export default function Matches() {
                   View Profile
                 </button>
 
-                <button className="secondary-btn">
-                  Send Request
+                <button
+                  className="secondary-btn"
+                  onClick={() => openInviteModal(user)}
+                >
+                  Invite
                 </button>
 
               </div>
@@ -180,6 +197,14 @@ export default function Matches() {
           ))}
 
         </div>
+      )}
+
+      {selectedMatch && (
+        <InviteModal
+          open={inviteOpen}
+          onClose={closeInviteModal}
+          receiver={selectedMatch}
+        />
       )}
     </div>
   );

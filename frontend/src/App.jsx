@@ -7,6 +7,9 @@ import Profile from "./pages/Profile/Profile";
 import Skills from "./pages/Skills/Skills";
 import Interests from "./pages/Interests/Interests";
 import Matches from "./pages/Matches/Matches";
+import ReceivedInvites from "./pages/Invites/ReceivedInvites";
+import SentInvites from "./pages/Invites/SentInvites";
+import Chat from "./pages/Chat/Chat";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -62,13 +65,46 @@ function App() {
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/matches"
           element={
             <ProtectedRoute>
               <MainLayout>
                 <Matches />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/invites/received"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ReceivedInvites />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/invites/sent"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SentInvites />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Chat />
               </MainLayout>
             </ProtectedRoute>
           }
