@@ -25,220 +25,181 @@ enum ApplicationStatus {
   REJECTED
 }
 
-model User {
-  id            String   @id @default(uuid())
-
-  name          String
-
-  email         String   @unique
-
-  password      String
-
-  role          UserRole @default(STUDENT)
-
-  bio           String?
-
-  profileImage  String?
-
-  githubUrl     String?
-
-  linkedinUrl   String?
-
-  educationType EducationType?
-
-  schoolName    String?
-
-  standard      Int?
-
-  college       String?
-
-  department    String?
-
-  academicYear  Int?
-
-  company       String?
-
-  position      String?
-
-  profession    String?
-
-  skills        UserSkill[]
-
-  interests     UserInterest[]
-
-  teamRequests  TeamRequest[]
-
-  applications  Application[]
-
-  messages      Message[]
-
-  sentInvites TeamInvite[] @relation("InviteSender")
-
-  receivedInvites TeamInvite[] @relation("InviteReceiver")
-
-  conversations ConversationParticipant[]
-
-  createdAt     DateTime @default(now())
-
-  updatedAt     DateTime @updatedAt
-}
-
-model Skill {
-  id    String @id @default(uuid())
-
-  name  String @unique
-
-  users UserSkill[]
-}
-
-model UserSkill {
-  id      String @id @default(uuid())
-
-  userId  String
-
-  skillId String
-
-  user    User  @relation(fields: [userId], references: [id])
-
-  skill   Skill @relation(fields: [skillId], references: [id])
-
-  @@unique([userId, skillId])
-}
-
-model Interest {
-  id    String @id @default(uuid())
-
-  name  String @unique
-
-  users UserInterest[]
-}
-
-model UserInterest {
-  id         String @id @default(uuid())
-
-  userId     String
-
-  interestId String
-
-  user       User     @relation(fields: [userId], references: [id])
-
-  interest   Interest @relation(fields: [interestId], references: [id])
-
-  @@unique([userId, interestId])
-}
-
-model TeamRequest {
-  id          String   @id @default(uuid())
-
-  creatorId   String
-
-  title       String
-
-  description String
-
-  duration    String
-
-  status      String   @default("OPEN")
-
-  creator     User @relation(fields: [creatorId], references: [id])
-
-  applications Application[]
-
-  createdAt   DateTime @default(now())
-
-  updatedAt   DateTime @updatedAt
-}
-
-model Application {
-  id            String @id @default(uuid())
-
-  teamRequestId String
-
-  applicantId   String
-
-  status        ApplicationStatus @default(PENDING)
-
-  teamRequest   TeamRequest @relation(fields: [teamRequestId], references: [id])
-
-  applicant     User @relation(fields: [applicantId], references: [id])
-
-  createdAt     DateTime @default(now())
-
-  updatedAt     DateTime @updatedAt
-}
-
-model Conversation {
-  id String @id @default(uuid())
-
-  participants ConversationParticipant[]
-
-  messages Message[]
-
-  createdAt DateTime @default(now())
-
-  updatedAt DateTime @updatedAt
-}
-
-model ConversationParticipant {
-  id             String @id @default(uuid())
-
-  conversationId String
-
-  userId         String
-
-  lastReadAt     DateTime?
-
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-
-  user           User @relation(fields: [userId], references: [id])
-
-  @@unique([conversationId, userId])
-}
-
-model Message {
-  id             String @id @default(uuid())
-
-  conversationId String
-
-  senderId       String
-
-  text           String
-
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-
-  sender         User @relation(fields: [senderId], references: [id])
-
-  createdAt      DateTime @default(now())
-}
-
 enum InviteStatus {
   PENDING
   ACCEPTED
   REJECTED
 }
 
+model User {
+  id       String   @id @default(uuid())
+  name     String
+  email    String   @unique
+  password String
+  role     UserRole @default(STUDENT)
+
+  bio          String?
+  profileImage String?
+  githubUrl    String?
+  linkedinUrl  String?
+
+  educationType EducationType?
+
+  schoolName String?
+  standard   Int?
+
+  college      String?
+  department   String?
+  academicYear Int?
+
+  company    String?
+  position   String?
+  profession String?
+
+  skills    UserSkill[]
+  interests UserInterest[]
+
+  teamRequests TeamRequest[]
+  applications Application[]
+
+  messages Message[]
+
+  conversations ConversationParticipant[]
+
+  sentInvites     TeamInvite[] @relation("InviteSender")
+  receivedInvites TeamInvite[] @relation("InviteReceiver")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Skill {
+  id   String @id @default(uuid())
+  name String @unique
+
+  users UserSkill[]
+}
+
+model UserSkill {
+  id String @id @default(uuid())
+
+  userId  String
+  skillId String
+
+  user  User  @relation(fields: [userId], references: [id])
+  skill Skill @relation(fields: [skillId], references: [id])
+
+  @@unique([userId, skillId])
+}
+
+model Interest {
+  id   String @id @default(uuid())
+  name String @unique
+
+  users UserInterest[]
+}
+
+model UserInterest {
+  id String @id @default(uuid())
+
+  userId     String
+  interestId String
+
+  user     User     @relation(fields: [userId], references: [id])
+  interest Interest @relation(fields: [interestId], references: [id])
+
+  @@unique([userId, interestId])
+}
+
+model TeamRequest {
+  id String @id @default(uuid())
+
+  creatorId String
+
+  title       String
+  description String
+  duration    String
+
+  status String @default("OPEN")
+
+  creator User @relation(fields: [creatorId], references: [id])
+
+  applications Application[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Application {
+  id String @id @default(uuid())
+
+  teamRequestId String
+  applicantId   String
+
+  status ApplicationStatus @default(PENDING)
+
+  teamRequest TeamRequest @relation(fields: [teamRequestId], references: [id])
+  applicant   User        @relation(fields: [applicantId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ConversationParticipant {
+  id String @id @default(uuid())
+
+  conversationId String
+  userId         String
+
+  lastReadAt DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id String @id @default(uuid())
+
+  conversationId String
+  senderId       String
+
+  text String
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
 model TeamInvite {
-  id         String       @id @default(uuid())
+  id String @id @default(uuid())
 
   senderId   String
   receiverId String
 
-  message    String?
+  message String?
 
-  status     InviteStatus @default(PENDING)
+  status InviteStatus @default(PENDING)
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  sender   User @relation("InviteSender", fields: [senderId], references: [id])
+  receiver User @relation("InviteReceiver", fields: [receiverId], references: [id])
 
-  sender User @relation(
-    "InviteSender",
-    fields: [senderId],
-    references: [id]
-  )
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  receiver User @relation(
-    "InviteReceiver",
-    fields: [receiverId],
-    references: [id]
-  )
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
 }
