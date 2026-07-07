@@ -19,53 +19,49 @@ const SOCKET_URL = (
 
 export function SocketProvider({ children }) {
   const { isAuthenticated } = useAuth();
-
-  const socketRef = useRef(null);
-
+  const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
   const [onlineUserIds, setOnlineUserIds] = useState([]);
 
   useEffect(() => {
     if (!isAuthenticated) {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
+      if (socket) {
+        socket.disconnect();
       }
-
+      setSocket(null);
       setConnected(false);
       setOnlineUserIds([]);
-
       return;
     }
 
     const token = localStorage.getItem("token");
-
     if (!token) return;
 
-    const socket = io(SOCKET_URL, {
+    const socketInstance = io(SOCKET_URL, {
       auth: { token },
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
     });
 
-    socketRef.current = socket;
+    setSocket(socketInstance);
 
-    socket.on("connect", () => {
+    socketInstance.on("connect", () => {
       setConnected(true);
     });
 
-    socket.on("disconnect", () => {
+    socketInstance.on("disconnect", () => {
       setConnected(false);
     });
 
-    socket.on("online_users", (userIds) => {
+    socketInstance.on("online_users", (userIds) => {
       setOnlineUserIds(userIds);
     });
 
     return () => {
-      socket.disconnect();
-      socketRef.current = null;
+      socketInstance.disconnect();
+      setSocket(null);
+      setConnected(false);
     };
   }, [isAuthenticated]);
 
@@ -76,7 +72,7 @@ export function SocketProvider({ children }) {
   return (
     <SocketContext.Provider
       value={{
-        socket: socketRef.current,
+        socket,
         connected,
         onlineUserIds,
         isUserOnline,

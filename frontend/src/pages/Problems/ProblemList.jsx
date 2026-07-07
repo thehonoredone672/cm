@@ -1,185 +1,153 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProblems } from "../../services/problemService";
-import { useAuth } from "../../context/AuthContext";
+import { getSubmissions } from "../../services/submissionService";
 import "./Problems.css";
 
+const DIFF_LABEL = { EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" };
+const DIFF_CLASS = { EASY: "easy", MEDIUM: "medium", HARD: "hard" };
+
 export default function ProblemList() {
+  const navigate = useNavigate();
   const [problems, setProblems] = useState([]);
-  const [filteredProblems, setFilteredProblems] = useState([]);
+  const [solvedIds, setSolvedIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [difficultyFilter, setDifficultyFilter] = useState("ALL");
-  const [categoryFilter, setCategoryFilter] = useState("ALL");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [diffFilter, setDiffFilter] = useState("ALL");
+  const [catFilter, setCatFilter] = useState("ALL");
 
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  useEffect(() => { load(); }, []);
 
-  useEffect(() => {
-    fetchProblems();
-  }, []);
-
-  useEffect(() => {
-    let result = problems;
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(p => 
-        p.title.toLowerCase().includes(q) || 
-        p.tags.some(tag => tag.toLowerCase().includes(q))
-      );
-    }
-
-    if (difficultyFilter !== "ALL") {
-      result = result.filter(p => p.difficulty === difficultyFilter);
-    }
-
-    if (categoryFilter !== "ALL") {
-      result = result.filter(p => p.category === categoryFilter);
-    }
-
-    setFilteredProblems(result);
-  }, [search, difficultyFilter, categoryFilter, problems]);
-
-  const fetchProblems = async () => {
+  const load = async () => {
     try {
       setLoading(true);
       const data = await getProblems();
       setProblems(data);
-      setFilteredProblems(data);
     } catch (err) {
-      console.error(err);
-      setErrorMessage("Failed to load problems.");
+      console.error("[ProblemList] load:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  const getDifficultyClass = (diff) => {
-    return diff.toLowerCase();
+  const filtered = problems.filter((p) => {
+    const matchSearch =
+      !search ||
+      p.title.toLowerCase().includes(search.toLowerCase()) ||
+      (p.tags || []).some((t) => t.toLowerCase().includes(search.toLowerCase()));
+    const matchDiff = diffFilter === "ALL" || p.difficulty === diffFilter;
+    const matchCat = catFilter === "ALL" || p.category === catFilter;
+    return matchSearch && matchDiff && matchCat;
+  });
+
+  const categories = ["ALL", ...new Set(problems.map((p) => p.category).filter(Boolean))];
+
+  const counts = {
+    EASY: problems.filter((p) => p.difficulty === "EASY").length,
+    MEDIUM: problems.filter((p) => p.difficulty === "MEDIUM").length,
+    HARD: problems.filter((p) => p.difficulty === "HARD").length,
   };
 
-  const categories = ["ALL", ...new Set(problems.map(p => p.category))];
-
   return (
-    <div className="problems-page">
-      <div className="problems-header">
-        <h1>Coding Workspace</h1>
+    <div className="lc-problems">
+      <div className="lc-problems__hero">
+        <h1>Problem Set</h1>
+        <p>Practice your skills and prepare for coding challenges.</p>
       </div>
 
-      {errorMessage && <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)", marginBottom: "20px" }}>{errorMessage}</div>}
+      {/* Stats pills */}
+      <div className="lc-stats">
+        <span className="lc-stat-pill lc-stat-pill--easy">? Easy: {counts.EASY}</span>
+        <span className="lc-stat-pill lc-stat-pill--medium">? Medium: {counts.MEDIUM}</span>
+        <span className="lc-stat-pill lc-stat-pill--hard">? Hard: {counts.HARD}</span>
+      </div>
 
-      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "24px", alignItems: "center" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "260px" }}>
+      {/* Filters */}
+      <div className="lc-filters">
+        <div className="lc-search">
+          <svg className="lc-search__icon" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
           <input
-            type="text"
-            placeholder="Search problems or tags..."
+            placeholder="Search by title or tag…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 16px 10px 38px",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--surface)",
-              color: "var(--text-primary)",
-              fontSize: "14px"
-            }}
           />
-          <svg 
-            width="18" 
-            height="18" 
-            fill="none" 
-            stroke="var(--text-secondary)" 
-            strokeWidth="2" 
-            viewBox="0 0 24 24"
-            style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
         </div>
 
-        <select
-          value={difficultyFilter}
-          onChange={(e) => setDifficultyFilter(e.target.value)}
-          style={{
-            padding: "10px 16px",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            background: "var(--surface)",
-            color: "var(--text-primary)",
-            fontSize: "14px",
-            outline: "none"
-          }}
-        >
+        <select className="lc-select" value={diffFilter} onChange={(e) => setDiffFilter(e.target.value)}>
           <option value="ALL">All Difficulties</option>
           <option value="EASY">Easy</option>
           <option value="MEDIUM">Medium</option>
           <option value="HARD">Hard</option>
         </select>
 
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          style={{
-            padding: "10px 16px",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            background: "var(--surface)",
-            color: "var(--text-primary)",
-            fontSize: "14px",
-            outline: "none"
-          }}
-        >
-          {categories.map(cat => (
-            <option key={cat} value={cat}>
-              {cat === "ALL" ? "All Categories" : cat}
-            </option>
+        <select className="lc-select" value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
+          {categories.map((c) => (
+            <option key={c} value={c}>{c === "ALL" ? "All Categories" : c}</option>
           ))}
         </select>
       </div>
 
-      {loading ? (
-        <div className="problems-grid">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="problem-card skeleton" style={{ height: "160px" }}></div>
-          ))}
-        </div>
-      ) : filteredProblems.length === 0 ? (
-        <div style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "48px 24px", textAlign: "center", color: "var(--text-secondary)" }}>
-          <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: "0 auto 16px auto", opacity: 0.5 }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h3>No problems found</h3>
-          <p>Try resetting filters or search queries.</p>
-        </div>
-      ) : (
-        <div className="problems-grid">
-          {filteredProblems.map((problem) => (
-            <div
-              key={problem.id}
-              className="problem-card"
-              onClick={() => navigate(`/problems/${problem.id}`)}
-            >
-              <div>
-                <div className="problem-card__top">
-                  <h3 className="problem-card__title">{problem.title}</h3>
-                  <span className={`difficulty-badge ${getDifficultyClass(problem.difficulty)}`}>
-                    {problem.difficulty}
-                  </span>
+      {/* Table */}
+      <table className="lc-table">
+        <thead>
+          <tr>
+            <th style={{ width: 40 }}>#</th>
+            <th>Title</th>
+            <th>Difficulty</th>
+            <th>Tags</th>
+            <th>Category</th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            [1,2,3,4,5].map((i) => (
+              <tr key={i} className="lc-skeleton-row">
+                <td><div className="lc-skeleton-cell" style={{ width: 20 }} /></td>
+                <td><div className="lc-skeleton-cell" style={{ width: "70%" }} /></td>
+                <td><div className="lc-skeleton-cell" style={{ width: 60 }} /></td>
+                <td><div className="lc-skeleton-cell" style={{ width: "80%" }} /></td>
+                <td><div className="lc-skeleton-cell" style={{ width: 80 }} /></td>
+              </tr>
+            ))
+          ) : filtered.length === 0 ? (
+            <tr>
+              <td colSpan={5}>
+                <div className="lc-empty">
+                  <div style={{ fontSize: 36, marginBottom: 10 }}>??</div>
+                  <div>No problems match your filters.</div>
                 </div>
-                <div className="problem-card__category">{problem.category}</div>
-              </div>
-              <div className="problem-card__tags">
-                {problem.tags.map(tag => (
-                  <span key={tag} className="problem-tag">{tag}</span>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+              </td>
+            </tr>
+          ) : (
+            filtered.map((prob, idx) => (
+              <tr key={prob.id} onClick={() => navigate(`/problems/${prob.id}`)}>
+                <td style={{ color: "var(--text-muted)", fontSize: 13 }}>{idx + 1}</td>
+                <td>
+                  <div className="lc-prob-title">
+                    {solvedIds.has(prob.id) && <span className="lc-solved-check">?</span>}
+                    {prob.title}
+                  </div>
+                </td>
+                <td>
+                  <span className={`lc-diff-badge lc-diff-badge--${DIFF_CLASS[prob.difficulty]}`}>
+                    {DIFF_LABEL[prob.difficulty]}
+                  </span>
+                </td>
+                <td>
+                  <div className="lc-tags">
+                    {(prob.tags || []).slice(0, 3).map((tag) => (
+                      <span key={tag} className="lc-tag">{tag}</span>
+                    ))}
+                  </div>
+                </td>
+                <td className="lc-acceptance">{prob.category || "—"}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
     </div>
   );
 }

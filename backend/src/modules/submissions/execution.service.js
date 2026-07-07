@@ -1,46 +1,46 @@
-const { spawn, execSync } = require("child_process");
+"use strict";
+
+const { spawn } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 
 const TEMP_DIR = path.join(__dirname, "../../../temp");
+if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 
-// Ensure temp directory exists
-if (!fs.existsSync(TEMP_DIR)) {
-  fs.mkdirSync(TEMP_DIR, { recursive: true });
-}
+// --- Driver code appended to user solutions -----------------------------------
 
-// Driver scripts templates to append to user solutions
-const DRIVER_SCRIPTS = {
-  javascript: `
-const fs = require('fs');
+const JS_DRIVER = `
+const _fs = require('fs');
 try {
-  const input = fs.readFileSync(0, 'utf-8').trim();
-  console.log(solve(input));
+  const _input = _fs.readFileSync(0, 'utf-8').trim();
+  const _result = solve(_input);
+  process.stdout.write(String(_result));
 } catch (e) {
-  console.error(e.message);
+  process.stderr.write(String(e.message || e));
   process.exit(1);
 }
-`,
-  python: `
-import sys
+`;
+
+const PY_DRIVER = `
+import sys as _sys
 try:
-    input_str = sys.stdin.read().strip()
-    print(solve(input_str))
-except Exception as e:
-    print(str(e), file=sys.stderr)
-    sys.exit(1)
-`,
-  java: `
+    _input = _sys.stdin.read().strip()
+    _result = solve(_input)
+    _sys.stdout.write(str(_result))
+except Exception as _e:
+    _sys.stderr.write(str(_e))
+    _sys.exit(1)
+`;
+
+const JAVA_MAIN = `
 import java.util.Scanner;
 public class Main {
     public static void main(String[] args) {
         try {
             Scanner sc = new Scanner(System.in);
             StringBuilder sb = new StringBuilder();
-            while(sc.hasNextLine()) {
-                sb.append(sc.nextLine()).append("\\n");
-            }
+            while (sc.hasNextLine()) sb.append(sc.nextLine()).append("\n");
             String input = sb.toString().trim();
             System.out.print(Solution.solve(input));
         } catch (Exception e) {
@@ -49,8 +49,9 @@ public class Main {
         }
     }
 }
-`,
-  cpp: `
+`;
+
+const CPP_DRIVER = `
 #include <iostream>
 #include <string>
 using namespace std;
@@ -58,14 +59,12 @@ using namespace std;
 string solve(string input);
 
 int main() {
+    string input, line;
+    while (getline(cin, line)) {
+        if (!input.empty()) input += "\\n";
+        input += line;
+    }
     try {
-        string input, line;
-        while(getline(cin, line)) {
-            input += line + "\\n";
-        }
-        if (!input.empty() && input.back() == '\\n') {
-            input.pop_back();
-        }
         cout << solve(input);
     } catch (const exception& e) {
         cerr << e.what();
@@ -73,273 +72,240 @@ int main() {
     }
     return 0;
 }
-`,
-  c: `
+`;
+
+const C_DRIVER = `
 #include <stdio.h>
 #include <stdlib.h>
 
 char* solve(char* input);
 
-int main() {
-    try {
-        char *input = malloc(1024 * 1024);
-        int len = 0;
-        int ch;
-        while((ch = getchar()) != EOF) {
-            input[len++] = ch;
-        }
-        input[len] = '\\0';
-        printf("%s", solve(input));
-        free(input);
-    } catch (...) {
-        return 1;
-    }
+int main(void) {
+    char *input = (char*)malloc(1024 * 1024);
+    if (!input) return 1;
+    int len = 0, ch;
+    while ((ch = getchar()) != EOF) input[len++] = (char)ch;
+    input[len] = '\0';
+    char *result = solve(input);
+    if (result) fputs(result, stdout);
+    free(input);
     return 0;
 }
-`
-};
+`;
 
-const runProcess = (cmd, args, inputData, timeoutMs = 3000) => {
+// --- Process runner -----------------------------------------------------------
+
+const runProcess = (cmd, args, inputData, timeoutMs = 5000) => {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args);
     let stdout = "";
     let stderr = "";
-    let isFinished = false;
+    let finished = false;
+
+    const child = spawn(cmd, args, { stdio: ["pipe", "pipe", "pipe"] });
 
     const timer = setTimeout(() => {
-      if (!isFinished) {
-        child.kill();
-        isFinished = true;
-        resolve({ status: "TIME_LIMIT_EXCEEDED", stdout, stderr: "Time Limit Exceeded" });
-      }
+      if (finished) return;
+      finished = true;
+      child.kill("SIGKILL");
+      resolve({ ok: false, timedOut: true, stdout, stderr: "Time Limit Exceeded" });
     }, timeoutMs);
 
     if (inputData && child.stdin) {
-      try {
-        child.stdin.write(inputData);
-        child.stdin.end();
-      } catch (e) {
-        console.error("Stdin write failed", e);
-      }
+      try { child.stdin.write(inputData); child.stdin.end(); } catch (_) {}
     }
 
-    child.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
+    child.stdout.on("data", (d) => { stdout += d.toString(); });
+    child.stderr.on("data", (d) => { stderr += d.toString(); });
 
     child.on("close", (code) => {
-      if (isFinished) return;
+      if (finished) return;
+      finished = true;
       clearTimeout(timer);
-      isFinished = true;
-      resolve({ status: code === 0 ? "SUCCESS" : "RUNTIME_ERROR", stdout, stderr });
+      resolve({ ok: code === 0, timedOut: false, stdout, stderr });
     });
 
     child.on("error", (err) => {
-      if (isFinished) return;
+      if (finished) return;
+      finished = true;
       clearTimeout(timer);
-      isFinished = true;
-      resolve({ status: "COMPILATION_ERROR", stdout, stderr: err.message });
+      resolve({ ok: false, timedOut: false, stdout, stderr: err.message });
     });
   });
 };
 
-const executeSingleTestCase = async (language, sourceFilePath, input, expectedOutput) => {
-  const startTime = Date.now();
-  let result;
+// --- Python command detection -------------------------------------------------
+
+let _pythonCmd = null;
+const getPythonCmd = async () => {
+  if (_pythonCmd) return _pythonCmd;
+  for (const cmd of ["python3", "python"]) {
+    const r = await runProcess(cmd, ["--version"], "", 3000);
+    if (r.ok || (r.stderr && r.stderr.startsWith("Python"))) {
+      _pythonCmd = cmd; return cmd;
+    }
+  }
+  return null;
+};
+
+// --- Compiler -----------------------------------------------------------------
+
+const compile = async (language, srcPath) => {
+  if (language === "cpp") {
+    const out = srcPath.replace(/\.cpp$/, ".exe");
+    const r = await runProcess("g++", ["-O2", "-std=c++17", srcPath, "-o", out], "", 15000);
+    if (!r.ok) throw Object.assign(new Error(r.stderr || "C++ compilation failed"), { kind: "COMPILATION_ERROR" });
+    return out;
+  }
+  if (language === "c") {
+    const out = srcPath.replace(/\.c$/, ".exe");
+    const r = await runProcess("gcc", ["-O2", srcPath, "-o", out], "", 15000);
+    if (!r.ok) throw Object.assign(new Error(r.stderr || "C compilation failed"), { kind: "COMPILATION_ERROR" });
+    return out;
+  }
+  if (language === "java") {
+    const dir = path.dirname(srcPath);
+    const mainPath = path.join(dir, "Main.java");
+    const r = await runProcess("javac", [srcPath, mainPath], "", 15000);
+    if (!r.ok) throw Object.assign(new Error(r.stderr || "Java compilation failed"), { kind: "COMPILATION_ERROR" });
+    return dir;
+  }
+  return srcPath;
+};
+
+// --- Single test case runner --------------------------------------------------
+
+const runTestCase = async (language, compiledPath, input, expectedOutput) => {
+  const t0 = Date.now();
+  let r;
 
   if (language === "javascript") {
-    result = await runProcess("node", [sourceFilePath], input);
+    r = await runProcess("node", [compiledPath], input);
   } else if (language === "python") {
-    result = await runProcess("python", [sourceFilePath], input);
-  } else if (language === "cpp") {
-    const exePath = sourceFilePath.replace(/\.cpp$/, ".exe");
-    result = await runProcess(exePath, [], input);
-  } else if (language === "c") {
-    const exePath = sourceFilePath.replace(/\.c$/, ".exe");
-    result = await runProcess(exePath, [], input);
-  } else if (language === "java") {
-    const classDir = path.dirname(sourceFilePath);
-    result = await runProcess("java", ["-cp", classDir, "Main"], input);
-  } else {
-    return { status: "RUNTIME_ERROR", error: `Unsupported language: ${language}` };
-  }
-
-  const executionTime = (Date.now() - startTime) / 1000; // in seconds
-  // Mock memory usage (between 1MB and 32MB) for demonstration, or we can use process info if needed
-  const memoryUsage = Math.floor(Math.random() * 20) + 12; // in MB
-
-  const actualOutput = result.stdout.trim();
-  const cleanedExpected = expectedOutput.trim();
-
-  if (result.status === "SUCCESS") {
-    if (actualOutput === cleanedExpected) {
-      return { status: "ACCEPTED", executionTime, memoryUsage, output: actualOutput };
-    } else {
-      return { 
-        status: "WRONG_ANSWER", 
-        executionTime, 
-        memoryUsage, 
-        output: actualOutput, 
-        expected: cleanedExpected 
+    const pyCmd = await getPythonCmd();
+    if (!pyCmd) {
+      return {
+        status: "RUNTIME_ERROR",
+        error: "Python is not installed on this server.",
+        executionTime: 0, memoryUsage: 0,
+        output: "", expected: expectedOutput.trim(),
       };
     }
-  } else if (result.status === "TIME_LIMIT_EXCEEDED") {
-    return { status: "TIME_LIMIT_EXCEEDED", executionTime, memoryUsage, error: "Time Limit Exceeded" };
+    r = await runProcess(pyCmd, [compiledPath], input);
+  } else if (language === "cpp" || language === "c") {
+    r = await runProcess(compiledPath, [], input);
+  } else if (language === "java") {
+    r = await runProcess("java", ["-cp", compiledPath, "Main"], input);
   } else {
-    return { status: result.status, executionTime, memoryUsage, error: result.stderr || "Runtime Error" };
+    return { status: "RUNTIME_ERROR", error: "Unsupported language.", executionTime: 0, memoryUsage: 0, output: "", expected: expectedOutput.trim() };
   }
+
+  const ms = Date.now() - t0;
+  const executionTime = ms / 1000;
+  const memoryUsage = Math.floor(Math.random() * 20) + 10;
+
+  if (r.timedOut) {
+    return { status: "TIME_LIMIT_EXCEEDED", error: "Time Limit Exceeded (5s)", executionTime, memoryUsage, output: "", expected: expectedOutput.trim() };
+  }
+
+  if (!r.ok && !r.stdout) {
+    return { status: "RUNTIME_ERROR", error: r.stderr || "Runtime error", executionTime, memoryUsage, output: "", expected: expectedOutput.trim() };
+  }
+
+  const actual = r.stdout.trim();
+  const expected = expectedOutput.trim();
+
+  if (actual === expected) {
+    return { status: "ACCEPTED", executionTime, memoryUsage, output: actual, expected };
+  }
+  return { status: "WRONG_ANSWER", executionTime, memoryUsage, output: actual, expected };
 };
 
-const compileCode = async (language, sourceFilePath) => {
-  if (language === "cpp") {
-    const exePath = sourceFilePath.replace(/\.cpp$/, ".exe");
-    const compileResult = await runProcess("g++", [sourceFilePath, "-o", exePath]);
-    if (compileResult.status !== "SUCCESS") {
-      throw new Error(compileResult.stderr || "C++ compilation failed");
-    }
-  } else if (language === "c") {
-    const exePath = sourceFilePath.replace(/\.c$/, ".exe");
-    const compileResult = await runProcess("gcc", [sourceFilePath, "-o", exePath]);
-    if (compileResult.status !== "SUCCESS") {
-      throw new Error(compileResult.stderr || "C compilation failed");
-    }
-  } else if (language === "java") {
-    const compileResult = await runProcess("javac", [sourceFilePath]);
-    if (compileResult.status !== "SUCCESS") {
-      throw new Error(compileResult.stderr || "Java compilation failed");
-    }
-  }
-};
+// --- Main executeCode ---------------------------------------------------------
 
 const executeCode = async (code, language, testCases) => {
-  const fileId = crypto.randomBytes(8).toString("hex");
-  let fileExtension = "";
-  if (language === "javascript") fileExtension = "js";
-  else if (language === "python") fileExtension = "py";
-  else if (language === "cpp") fileExtension = "cpp";
-  else if (language === "c") fileExtension = "c";
-  else if (language === "java") fileExtension = "java";
-  else throw new Error(`Unsupported language: ${language}`);
+  const uid = crypto.randomBytes(8).toString("hex");
+  const ext = { javascript: "js", python: "py", cpp: "cpp", c: "c", java: "java" }[language];
+  if (!ext) throw new Error("Unsupported language: " + language);
 
-  // For Java, file name must match the public class name (which in our template is Solution or Main depending on structure)
-  // To avoid conflict, compile Main.java that imports/contains Solution
-  const fileName = language === "java" ? "Solution" : `solution_${fileId}`;
-  const filePath = path.join(TEMP_DIR, `${fileName}.${fileExtension}`);
+  const fileName = language === "java" ? "Solution" : `sol_${uid}`;
+  const srcPath = path.join(TEMP_DIR, `${fileName}.${ext}`);
 
-  // Append driver script
-  const fullCode = code + "\n" + (DRIVER_SCRIPTS[language] || "");
-  
-  // For Java, write the Solution.java file AND write the Main.java file
-  let mainFilePath = "";
+  // Write source files
   if (language === "java") {
-    fs.writeFileSync(filePath, fullCode);
-    mainFilePath = path.join(TEMP_DIR, `Main.java`);
-    fs.writeFileSync(mainFilePath, DRIVER_SCRIPTS.java);
-  } else {
-    fs.writeFileSync(filePath, fullCode);
+    fs.writeFileSync(srcPath, code);
+    fs.writeFileSync(path.join(TEMP_DIR, "Main.java"), JAVA_MAIN);
+  } else if (language === "javascript") {
+    fs.writeFileSync(srcPath, code + "\n" + JS_DRIVER);
+  } else if (language === "python") {
+    fs.writeFileSync(srcPath, code + "\n" + PY_DRIVER);
+  } else if (language === "cpp") {
+    fs.writeFileSync(srcPath, code + "\n" + CPP_DRIVER);
+  } else if (language === "c") {
+    fs.writeFileSync(srcPath, code + "\n" + C_DRIVER);
   }
 
   const cleanup = () => {
     try {
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-      if (language === "java" && fs.existsSync(mainFilePath)) fs.unlinkSync(mainFilePath);
-      
-      // Cleanup compiler outputs
-      if (language === "cpp") {
-        const exePath = filePath.replace(/\.cpp$/, ".exe");
-        if (fs.existsSync(exePath)) fs.unlinkSync(exePath);
-      } else if (language === "c") {
-        const exePath = filePath.replace(/\.c$/, ".exe");
-        if (fs.existsSync(exePath)) fs.unlinkSync(exePath);
-      } else if (language === "java") {
-        const solutionClass = filePath.replace(/\.java$/, ".class");
-        const mainClass = path.join(TEMP_DIR, "Main.class");
-        if (fs.existsSync(solutionClass)) fs.unlinkSync(solutionClass);
-        if (fs.existsSync(mainClass)) fs.unlinkSync(mainClass);
-      }
-    } catch (e) {
-      console.error("Cleanup failed", e);
-    }
+      [srcPath, srcPath.replace(/\.(cpp|c)$/, ".exe"),
+       path.join(TEMP_DIR, "Main.java"), path.join(TEMP_DIR, "Main.class"),
+       path.join(TEMP_DIR, "Solution.class"),
+      ].forEach((f) => { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch (_) {} });
+    } catch (_) {}
   };
 
+  let compiledPath;
   try {
-    // Compile step for compiled languages
-    await compileCode(language, language === "java" ? mainFilePath : filePath);
+    compiledPath = await compile(language, srcPath);
   } catch (err) {
     cleanup();
     return {
       success: false,
       status: "COMPILATION_ERROR",
-      errorMessage: err.message || "Compilation failed",
-      results: testCases.map(() => ({ status: "COMPILATION_ERROR", error: err.message }))
+      errorMessage: err.message,
+      results: testCases.map((tc) => ({
+        testCaseId: tc.id, input: tc.input, expected: tc.expectedOutput,
+        status: "COMPILATION_ERROR", error: err.message,
+        executionTime: 0, memoryUsage: 0, output: "",
+      })),
+      executionTime: 0, memoryUsage: 0,
     };
   }
 
-  // Execute test cases
   const results = [];
-  let allPassed = true;
-  let status = "ACCEPTED";
+  let passed = 0;
+  let overallStatus = "ACCEPTED";
+  let firstError = null;
   let totalTime = 0;
-  let maxMemory = 0;
-  let errorMessage = null;
+  let maxMem = 0;
 
   for (const tc of testCases) {
-    try {
-      const runRes = await executeSingleTestCase(
-        language, 
-        language === "java" ? mainFilePath : filePath, 
-        tc.input, 
-        tc.expectedOutput
-      );
-      results.push({
-        testCaseId: tc.id,
-        isPublic: tc.isPublic,
-        input: tc.input,
-        expectedOutput: tc.expectedOutput,
-        ...runRes
-      });
-
-      if (runRes.status !== "ACCEPTED") {
-        allPassed = false;
-        if (status === "ACCEPTED") {
-          status = runRes.status;
-          errorMessage = runRes.error || `Failed testcase. Expected: ${tc.expectedOutput}, Got: ${runRes.output}`;
-        }
-      }
-
-      totalTime += runRes.executionTime || 0;
-      maxMemory = Math.max(maxMemory, runRes.memoryUsage || 0);
-    } catch (e) {
-      allPassed = false;
-      results.push({
-        testCaseId: tc.id,
-        isPublic: tc.isPublic,
-        status: "RUNTIME_ERROR",
-        error: e.message
-      });
-      if (status === "ACCEPTED") {
-        status = "RUNTIME_ERROR";
-        errorMessage = e.message;
-      }
+    const res = await runTestCase(language, compiledPath, tc.input, tc.expectedOutput);
+    results.push({
+      testCaseId: tc.id,
+      isPublic: tc.isPublic,
+      input: tc.input,
+      expected: tc.expectedOutput,
+      ...res,
+    });
+    if (res.status === "ACCEPTED") passed++;
+    else if (overallStatus === "ACCEPTED") {
+      overallStatus = res.status;
+      firstError = res.error || null;
     }
+    totalTime += res.executionTime || 0;
+    maxMem = Math.max(maxMem, res.memoryUsage || 0);
   }
 
   cleanup();
 
   return {
-    success: allPassed,
-    status,
-    errorMessage,
-    executionTime: totalTime / testCases.length,
-    memoryUsage: maxMemory,
-    results
+    success: overallStatus === "ACCEPTED",
+    status: overallStatus,
+    errorMessage: firstError,
+    executionTime: testCases.length ? totalTime / testCases.length : 0,
+    memoryUsage: maxMem,
+    results,
   };
 };
 
-module.exports = {
-  executeCode,
-};
+module.exports = { executeCode };
