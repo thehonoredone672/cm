@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { getProblemDetails } from "../../services/problemService";
@@ -20,22 +20,18 @@ export default function ProblemDetails() {
   const [problem, setProblem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
-  // Tab navigation in left pane: "description" | "submissions"
   const [leftTab, setLeftTab] = useState("description");
   const [pastSubmissions, setPastSubmissions] = useState([]);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
-  // Editor states
   const [language, setLanguage] = useState("javascript");
   const [code, setCode] = useState("");
-  const [theme, setTheme] = useState("vs-dark"); // "vs-dark" | "light"
+  const [theme, setTheme] = useState("vs-dark");
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Run / Submit states
   const [executing, setExecuting] = useState(false);
-  const [execType, setExecType] = useState(null); // "run" | "submit"
+  const [execType, setExecType] = useState(null);
   const [execResult, setExecResult] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [testCaseTab, setTestCaseTab] = useState(0);
@@ -46,7 +42,6 @@ export default function ProblemDetails() {
 
   useEffect(() => {
     if (problem) {
-      // Load saved draft or fall back to starter code from DB or default
       const savedCode = localStorage.getItem(`draft_${id}_${language}`);
       if (savedCode) {
         setCode(savedCode);
@@ -62,7 +57,6 @@ export default function ProblemDetails() {
       setLoading(true);
       const data = await getProblemDetails(id);
       setProblem(data);
-      // default language
       setLanguage("javascript");
     } catch (err) {
       console.error(err);
@@ -86,7 +80,6 @@ export default function ProblemDetails() {
 
   const handleEditorChange = (value) => {
     setCode(value || "");
-    // Auto-save draft
     localStorage.setItem(`draft_${id}_${language}`, value || "");
   };
 
@@ -146,7 +139,6 @@ export default function ProblemDetails() {
       setExecResult(result.executionResult);
       setTestCaseTab(0);
       
-      // If we are on submissions tab, reload
       if (leftTab === "submissions") {
         fetchSubmissions();
       }
@@ -180,15 +172,13 @@ export default function ProblemDetails() {
   if (errorMessage && !problem) {
     return (
       <div className="problems-page">
-        <div style={{ background: "rgba(220, 38, 38, 0.1)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)" }}>{errorMessage}</div>
+        <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "16px", borderRadius: "var(--radius-sm)" }}>{errorMessage}</div>
         <button className="btn-secondary" onClick={() => navigate("/problems")} style={{ marginTop: "12px" }}>Back to Problems</button>
       </div>
     );
   }
 
-  // Parse constraints and examples from JSON
   const parsedExamples = typeof problem.examples === "string" ? JSON.parse(problem.examples) : problem.examples || [];
-  const parsedStarterCode = typeof problem.starterCode === "string" ? JSON.parse(problem.starterCode) : problem.starterCode || {};
 
   return (
     <div className={`split-layout ${isFullscreen ? "fullscreen-mode" : ""}`} style={isFullscreen ? { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, height: "100vh", margin: 0, padding: "12px" } : {}}>
@@ -229,7 +219,7 @@ export default function ProblemDetails() {
 
               {parsedExamples.length > 0 && (
                 <div>
-                  <h3>Examples</h3>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "12px" }}>Examples</h3>
                   <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                     {parsedExamples.map((ex, idx) => (
                       <div key={idx} className="example-box">
@@ -245,7 +235,7 @@ export default function ProblemDetails() {
 
               {problem.constraints && (
                 <div>
-                  <h3>Constraints</h3>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, marginBottom: "12px" }}>Constraints</h3>
                   <ul className="constraints-list">
                     {problem.constraints.split("\n").map((c, i) => (
                       <li key={i}>{c}</li>
@@ -274,7 +264,6 @@ export default function ProblemDetails() {
                         <div className="submission-meta" style={{ marginTop: "4px" }}>
                           <span>Language: <strong>{sub.language}</strong></span>
                           {sub.executionTime !== null && <span>Runtime: <strong>{Math.round(sub.executionTime * 1000)} ms</strong></span>}
-                          {sub.memoryUsage !== null && <span>Memory: <strong>{sub.memoryUsage} MB</strong></span>}
                         </div>
                       </div>
                       <div style={{ fontSize: "12px", color: "var(--text-secondary)", textAlign: "right" }}>
@@ -292,8 +281,6 @@ export default function ProblemDetails() {
 
       {/* RIGHT PANE: MONACO EDITOR & TERMINAL RESULTS */}
       <div className="right-pane">
-        
-        {/* Monaco Editor Container */}
         <div className="editor-container">
           <div className="editor-header">
             <select 
@@ -309,14 +296,14 @@ export default function ProblemDetails() {
             </select>
 
             <div className="editor-controls">
-              <button className="editor-btn" onClick={handleThemeToggle} title="Toggle Dark/Light theme">
-                {theme === "vs-dark" ? "☀️ Light" : "🌙 Dark"}
+              <button className="editor-btn" onClick={handleThemeToggle} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span>{theme === "vs-dark" ? "☀️ Light" : "🌙 Dark"}</span>
               </button>
-              <button className="editor-btn" onClick={handleResetCode} title="Reset to starter template">
+              <button className="editor-btn" onClick={handleResetCode}>
                 Reset
               </button>
-              <button className="editor-btn" onClick={handleFullscreenToggle} title="Fullscreen Mode">
-                {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              <button className="editor-btn" onClick={handleFullscreenToggle}>
+                {isFullscreen ? "Exit" : "Fullscreen"}
               </button>
             </div>
           </div>
@@ -342,11 +329,11 @@ export default function ProblemDetails() {
           </div>
         </div>
 
-        {/* Results / Drawer Container */}
+        {/* Drawer Console */}
         {drawerOpen && (
           <div className="results-drawer">
             <div className="drawer-header">
-              <span>Execution Results ({execType === "run" ? "Run Code" : "Submit Code"})</span>
+              <span>Console Logs ({execType === "run" ? "Run Code" : "Submit Code"})</span>
               <button 
                 onClick={() => setDrawerOpen(false)} 
                 style={{ background: "transparent", fontSize: "14px", color: "var(--text-secondary)", border: "none", cursor: "pointer" }}
@@ -358,9 +345,8 @@ export default function ProblemDetails() {
             <div className="drawer-content">
               {executing ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-secondary)" }}>
-                  <div style={{ width: "30px", height: "30px", border: "3px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                  <span>Running test cases locally...</span>
+                  <div style={{ width: "24px", height: "24px", border: "3px solid var(--border)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }}></div>
+                  <span>Running solution against test cases...</span>
                 </div>
               ) : execResult ? (
                 <div>
@@ -429,7 +415,6 @@ export default function ProblemDetails() {
           </div>
         )}
 
-        {/* Panel Footer */}
         <div className="results-footer">
           <button 
             className="editor-btn" 
@@ -442,8 +427,11 @@ export default function ProblemDetails() {
             className="btn-primary" 
             onClick={handleSubmitCode}
             disabled={executing}
-            style={{ padding: "8px 20px" }}
+            style={{ padding: "8px 20px", display: "flex", alignItems: "center", gap: "6px" }}
           >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
             Submit
           </button>
         </div>

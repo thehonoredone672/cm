@@ -48,7 +48,6 @@ export default function TeamsList() {
       setCreateName("");
       setCreateDesc("");
       setSuccessMessage(`Team "${newTeam.name}" created successfully!`);
-      // Refresh teams list
       fetchTeams();
     } catch (err) {
       console.error(err);
@@ -84,18 +83,18 @@ export default function TeamsList() {
         <h1>My Teams</h1>
       </div>
 
-      {successMessage && <div style={{ background: "rgba(22, 163, 74, 0.1)", border: "1px solid var(--success)", color: "var(--success)", padding: "12px", borderRadius: "var(--radius-sm)" }}>{successMessage}</div>}
-      {errorMessage && <div style={{ background: "rgba(220, 38, 38, 0.1)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)" }}>{errorMessage}</div>}
+      {successMessage && <div style={{ background: "var(--success-glow)", border: "1px solid var(--success)", color: "var(--success)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{successMessage}</div>}
+      {errorMessage && <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{errorMessage}</div>}
 
       <div className="teams-layout">
         <div className="teams-main">
           {loading ? (
-            <div className="team-card skeleton" style={{ height: "150px" }}>
-              <h2 style={{ background: "var(--border)", height: "24px", width: "50%", borderRadius: "4px" }}></h2>
-              <p style={{ background: "var(--border)", height: "16px", width: "80%", borderRadius: "4px" }}></p>
-            </div>
+            <div className="team-card skeleton" style={{ height: "150px" }}></div>
           ) : teams.length === 0 ? (
-            <div style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}>
+            <div style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "48px 24px", textAlign: "center", color: "var(--text-secondary)" }}>
+              <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: "0 auto 16px auto", opacity: 0.5 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+              </svg>
               <h3>No teams joined yet</h3>
               <p>Create a team or join an existing one using a code to start collaborating!</p>
             </div>
@@ -141,7 +140,11 @@ export default function TeamsList() {
                 type="submit" 
                 className="btn-primary" 
                 disabled={joinLoading || !joinCode.trim()}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
               >
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
                 {joinLoading ? "Joining..." : "Join"}
               </button>
             </form>
@@ -174,7 +177,11 @@ export default function TeamsList() {
                 type="submit" 
                 className="btn-primary" 
                 disabled={createLoading || !createName.trim()}
+                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
               >
+                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
                 {createLoading ? "Creating..." : "Create Team"}
               </button>
             </form>

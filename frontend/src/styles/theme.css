@@ -1,61 +1,78 @@
 :root {
+  /* ========= COLORS (Premium HSL Palette) ========= */
+  --primary: hsl(221.2, 83.2%, 53.3%);
+  --primary-dark: hsl(222.2, 47.4%, 11.2%);
+  --primary-glow: hsla(221.2, 83.2%, 53.3%, 0.15);
 
-    /* ========= COLORS ========= */
+  --success: hsl(142.1, 76.2%, 36.3%);
+  --success-glow: hsla(142.1, 76.2%, 36.3%, 0.15);
+  
+  --danger: hsl(346.8, 77.2%, 49.8%);
+  --danger-glow: hsla(346.8, 77.2%, 49.8%, 0.15);
+  
+  --warning: hsl(37.9, 90.2%, 50.8%);
+  --warning-glow: hsla(37.9, 90.2%, 50.8%, 0.15);
 
-    --primary: #2563eb;
-    --primary-dark: #1d4ed8;
+  /* Light Theme Values (Apple Inspired) */
+  --background: hsl(0, 0%, 98%);
+  --surface: hsl(0, 0%, 100%);
+  --surface-glass: rgba(255, 255, 255, 0.7);
+  --border: hsl(240, 5.9%, 90%);
+  --border-light: hsl(240, 5.9%, 95%);
+  
+  --text-primary: hsl(240, 10%, 3.9%);
+  --text-secondary: hsl(240, 3.8%, 46.1%);
+  --text-muted: hsl(240, 3.8%, 70%);
 
-    --success: #16a34a;
-    --danger: #dc2626;
-    --warning: #d97706;
+  /* ========= SHADOWS (Soft & Elegant) ========= */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 16px -6px rgba(0, 0, 0, 0.05);
+  --shadow-glow: 0 0 15px var(--primary-glow);
 
-    --background: #f8fafc;
-    --surface: #ffffff;
+  /* ========= BORDER RADIUS (Rounded Apple-like) ========= */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
 
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-
-    --border: #e2e8f0;
-
-    /* ========= SHADOW ========= */
-
-    --shadow-sm: 0 2px 8px rgba(0,0,0,.05);
-
-    --shadow-md: 0 8px 20px rgba(0,0,0,.08);
-
-    --shadow-lg: 0 12px 28px rgba(0,0,0,.12);
-
-    /* ========= BORDER ========= */
-
-    --radius-sm:8px;
-    --radius-md:12px;
-    --radius-lg:18px;
-
-    /* ========= SPACING ========= */
-
-    --space-xs:4px;
-    --space-sm:8px;
-    --space-md:16px;
-    --space-lg:24px;
-    --space-xl:32px;
-    --space-xxl:48px;
-
-    /* ========= TRANSITIONS ========= */
-
-    --transition:.25s ease;
-
+  /* ========= TRANSITIONS (Fluid Apple animations) ========= */
+  --transition: cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+  --transition-fast: cubic-bezier(0.16, 1, 0.3, 1) 0.15s;
 }
 
-[data-theme="dark"]{
+[data-theme="dark"] {
+  /* Dark Theme Values (LeetCode & Apple Dark Inspired) */
+  --background: hsl(240, 10%, 3.9%);
+  --surface: hsl(240, 10%, 6%);
+  --surface-glass: rgba(15, 15, 20, 0.7);
+  --border: hsl(240, 3.7%, 15.9%);
+  --border-light: hsl(240, 3.7%, 10%);
 
-    --background:#0f172a;
+  --text-primary: hsl(0, 0%, 98%);
+  --text-secondary: hsl(240, 5%, 64.9%);
+  --text-muted: hsl(240, 5%, 35%);
 
-    --surface:#1e293b;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+}
 
-    --text-primary:#f8fafc;
+/* System override: default to dark for high-tech premium feel */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: hsl(240, 10%, 3.9%);
+    --surface: hsl(240, 10%, 6%);
+    --surface-glass: rgba(15, 15, 20, 0.7);
+    --border: hsl(240, 3.7%, 15.9%);
+    --border-light: hsl(240, 3.7%, 10%);
 
-    --text-secondary:#cbd5e1;
+    --text-primary: hsl(0, 0%, 98%);
+    --text-secondary: hsl(240, 5%, 64.9%);
+    --text-muted: hsl(240, 5%, 35%);
 
-    --border:#334155;
-
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  }
 }

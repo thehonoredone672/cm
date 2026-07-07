@@ -14,11 +14,11 @@ export default function TeamDetails() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   
-  // Settings edit state
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchTeamDetails();
@@ -42,8 +42,12 @@ export default function TeamDetails() {
   const handleCopyCode = () => {
     if (!team) return;
     navigator.clipboard.writeText(team.joinCode);
+    setCopied(true);
     setSuccessMessage("Join code copied to clipboard!");
-    setTimeout(() => setSuccessMessage(""), 3000);
+    setTimeout(() => {
+      setCopied(false);
+      setSuccessMessage("");
+    }, 3000);
   };
 
   const handleLeaveTeam = async () => {
@@ -101,7 +105,9 @@ export default function TeamDetails() {
   if (loading) {
     return (
       <div className="teams-page">
-        <h2>Loading Team details...</h2>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
+          <div className="skeleton-loader" style={{ width: "100%", height: "200px", borderRadius: "12px" }}></div>
+        </div>
       </div>
     );
   }
@@ -109,7 +115,7 @@ export default function TeamDetails() {
   if (errorMessage && !team) {
     return (
       <div className="teams-page">
-        <div style={{ background: "rgba(220, 38, 38, 0.1)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)" }}>{errorMessage}</div>
+        <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "16px", borderRadius: "var(--radius-sm)" }}>{errorMessage}</div>
         <button className="btn-secondary" onClick={() => navigate("/teams")} style={{ marginTop: "12px" }}>Back to Teams</button>
       </div>
     );
@@ -119,17 +125,22 @@ export default function TeamDetails() {
 
   return (
     <div className="teams-page">
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-        <button className="btn-secondary" onClick={() => navigate("/teams")} style={{ padding: "6px 12px" }}>← Back</button>
+      <div>
+        <button className="btn-secondary" onClick={() => navigate("/teams")} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Back to Teams
+        </button>
       </div>
 
-      {successMessage && <div style={{ background: "rgba(22, 163, 74, 0.1)", border: "1px solid var(--success)", color: "var(--success)", padding: "12px", borderRadius: "var(--radius-sm)" }}>{successMessage}</div>}
-      {errorMessage && <div style={{ background: "rgba(220, 38, 38, 0.1)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)" }}>{errorMessage}</div>}
+      {successMessage && <div style={{ background: "var(--success-glow)", border: "1px solid var(--success)", color: "var(--success)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{successMessage}</div>}
+      {errorMessage && <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{errorMessage}</div>}
 
       <div className="team-details-header">
         <div className="team-details-header__top">
           {editMode ? (
-            <form onSubmit={handleUpdateTeam} style={{ display: "flex", flexDirection: "column", gap: "12px", width: "100%" }}>
+            <form onSubmit={handleUpdateTeam} style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
               <div className="form-group">
                 <label>Team Name</label>
                 <input 
@@ -144,10 +155,10 @@ export default function TeamDetails() {
                 <textarea 
                   value={editDesc} 
                   onChange={(e) => setEditDesc(e.target.value)} 
-                  rows="2"
+                  rows="3"
                 />
               </div>
-              <div style={{ display: "flex", gap: "8px" }}>
+              <div style={{ display: "flex", gap: "10px" }}>
                 <button type="submit" className="btn-primary" disabled={updateLoading}>{updateLoading ? "Saving..." : "Save Settings"}</button>
                 <button type="button" className="btn-secondary" onClick={() => setEditMode(false)}>Cancel</button>
               </div>
@@ -155,14 +166,25 @@ export default function TeamDetails() {
           ) : (
             <>
               <div>
-                <h1 style={{ fontSize: "28px", margin: "0 0 8px 0" }}>{team.name}</h1>
-                <p style={{ color: "var(--text-secondary)", margin: 0 }}>{team.description || "No description provided."}</p>
+                <h1 style={{ fontSize: "28px", margin: "0 0 8px 0", fontWeight: 800, letterSpacing: "-0.5px" }}>{team.name}</h1>
+                <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "15px", lineHeight: 1.5 }}>{team.description || "No description provided."}</p>
               </div>
-              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <div>
                 {isLeader ? (
-                  <button className="btn-secondary" onClick={() => setEditMode(true)}>Settings</button>
+                  <button className="btn-secondary" onClick={() => setEditMode(true)} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
+                  </button>
                 ) : (
-                  <button className="btn-danger" onClick={handleLeaveTeam}>Leave Team</button>
+                  <button className="btn-danger" onClick={handleLeaveTeam} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    Leave
+                  </button>
                 )}
               </div>
             </>
@@ -170,15 +192,23 @@ export default function TeamDetails() {
         </div>
 
         {!editMode && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "16px", marginTop: "8px" }}>
-            <div style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "16px", marginTop: "8px", gap: "16px" }}>
+            <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
               Created: <strong>{new Date(team.createdAt).toLocaleDateString()}</strong> | Leader: <strong>{team.leader.name}</strong>
             </div>
 
             <div className="join-code-container" onClick={handleCopyCode} style={{ cursor: "pointer" }} title="Click to copy join code">
               <span className="join-code-label">Join Code</span>
               <span className="join-code-value">{team.joinCode}</span>
-              <span style={{ fontSize: "12px", color: "var(--primary)" }}>📋</span>
+              {copied ? (
+                <svg width="14" height="14" fill="none" stroke="var(--success)" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" fill="none" stroke="var(--primary)" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+              )}
             </div>
           </div>
         )}
@@ -202,9 +232,9 @@ export default function TeamDetails() {
 
                 {isLeader && !isMemberLeader && (
                   <button 
-                    className="btn-secondary" 
+                    className="btn-danger" 
                     onClick={() => handleRemoveMember(membership.userId)}
-                    style={{ padding: "4px 8px", fontSize: "12px", borderColor: "var(--danger)", color: "var(--danger)" }}
+                    style={{ padding: "6px 12px", fontSize: "12px" }}
                   >
                     Remove
                   </button>

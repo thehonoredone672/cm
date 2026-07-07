@@ -1,25 +1,16 @@
 import Navbar from "../components/layout/Navbar/Navbar";
 import Sidebar from "../components/layout/Sidebar/Sidebar";
+import "./MainLayout.css";
 
 export default function MainLayout({ children }) {
   return (
     <>
       <Navbar />
 
-      <div
-        style={{
-          display: "flex",
-          minHeight: "calc(100vh - 64px)",
-        }}
-      >
+      <div className="layout-container">
         <Sidebar />
 
-        <main
-          style={{
-            flex: 1,
-            padding: "24px",
-          }}
-        >
+        <main className="main-content">
           {children}
         </main>
       </div>

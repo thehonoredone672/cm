@@ -1,19 +1,97 @@
 .navbar {
   height: 64px;
-  background: var(--surface);
+  background: var(--surface-glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--border);
-
   display: flex;
   justify-content: space-between;
   align-items: center;
-
-  padding: 0 24px;
+  padding: 0 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: background-color var(--transition), border-color var(--transition);
 }
 
 .navbar__left h2 {
-  color: var(--primary);
+  font-size: 20px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary), hsl(221.2, 83.2%, 65%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
 }
 
 .navbar__right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.navbar__user {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.navbar__username {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.theme-toggle-btn {
+  background: transparent;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--text-secondary);
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--border-light);
+  color: var(--text-primary);
+}
+
+.logout-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  transition: all var(--transition-fast);
+}
+
+.logout-btn:hover {
+  background: var(--danger-glow);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.guest-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: var(--border-light);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+@media (max-width: 576px) {
+  .navbar {
+    padding: 0 16px;
+  }
+  .navbar__username {
+    display: none; /* Hide username on tiny screens to save space */
+  }
 }

@@ -65,36 +65,40 @@ export default function ProblemList() {
   return (
     <div className="problems-page">
       <div className="problems-header">
-        <h1>Coding Problems</h1>
-        {user?.role === "ADMIN" && (
-          <button 
-            className="btn-primary" 
-            onClick={() => navigate("/problems/create")}
-          >
-            + Create Problem
-          </button>
-        )}
+        <h1>Coding Workspace</h1>
       </div>
 
-      {errorMessage && <div style={{ background: "rgba(220, 38, 38, 0.1)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)", marginBottom: "20px" }}>{errorMessage}</div>}
+      {errorMessage && <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)", marginBottom: "20px" }}>{errorMessage}</div>}
 
-      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "24px" }}>
-        <input
-          type="text"
-          placeholder="Search problems by name or tag..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{
-            flex: 1,
-            minWidth: "240px",
-            padding: "10px 16px",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
-            background: "var(--surface)",
-            color: "var(--text-primary)",
-            fontSize: "14px"
-          }}
-        />
+      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginBottom: "24px", alignItems: "center" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: "260px" }}>
+          <input
+            type="text"
+            placeholder="Search problems or tags..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px 16px 10px 38px",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--surface)",
+              color: "var(--text-primary)",
+              fontSize: "14px"
+            }}
+          />
+          <svg 
+            width="18" 
+            height="18" 
+            fill="none" 
+            stroke="var(--text-secondary)" 
+            strokeWidth="2" 
+            viewBox="0 0 24 24"
+            style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
 
         <select
           value={difficultyFilter}
@@ -139,18 +143,14 @@ export default function ProblemList() {
       {loading ? (
         <div className="problems-grid">
           {[1, 2, 3].map(i => (
-            <div key={i} className="problem-card skeleton" style={{ height: "160px" }}>
-              <div style={{ background: "var(--border)", height: "20px", width: "60%", borderRadius: "4px" }} />
-              <div style={{ background: "var(--border)", height: "16px", width: "40%", borderRadius: "4px" }} />
-              <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
-                <div style={{ background: "var(--border)", height: "24px", width: "50px", borderRadius: "12px" }} />
-                <div style={{ background: "var(--border)", height: "24px", width: "60px", borderRadius: "12px" }} />
-              </div>
-            </div>
+            <div key={i} className="problem-card skeleton" style={{ height: "160px" }}></div>
           ))}
         </div>
       ) : filteredProblems.length === 0 ? (
-        <div style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "40px", textAlign: "center", color: "var(--text-secondary)" }}>
+        <div style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "48px 24px", textAlign: "center", color: "var(--text-secondary)" }}>
+          <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: "0 auto 16px auto", opacity: 0.5 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
           <h3>No problems found</h3>
           <p>Try resetting filters or search queries.</p>
         </div>

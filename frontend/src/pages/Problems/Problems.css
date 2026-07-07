@@ -1,9 +1,9 @@
-/* Coding Problems Module Styling - LeetCode Inspired */
+/* Premium Coding Problems Module Styling - LeetCode & Apple Inspired */
 
 .problems-page {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 32px;
 }
 
 .problems-header {
@@ -11,39 +11,40 @@
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 16px;
-  margin-bottom: 24px;
+  padding-bottom: 20px;
+  margin-bottom: 32px;
 }
 
 .problems-header h1 {
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
   margin: 0;
 }
 
 /* Problem Grid List */
 .problems-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 24px;
 }
 
 .problem-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  padding: 20px;
+  padding: 24px;
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 16px;
+  gap: 20px;
   transition: transform var(--transition), box-shadow var(--transition);
   cursor: pointer;
 }
 
 .problem-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
   box-shadow: var(--shadow-md);
 }
 
@@ -51,14 +52,15 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 8px;
+  gap: 12px;
 }
 
 .problem-card__title {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 6px 0;
   color: var(--text-primary);
+  line-height: 1.3;
 }
 
 .problem-card__category {
@@ -67,25 +69,26 @@
 }
 
 .difficulty-badge {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   padding: 3px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .difficulty-badge.easy {
-  background: rgba(22, 163, 74, 0.1);
+  background: var(--success-glow);
   color: var(--success);
 }
 
 .difficulty-badge.medium {
-  background: rgba(217, 119, 6, 0.1);
+  background: var(--warning-glow);
   color: var(--warning);
 }
 
 .difficulty-badge.hard {
-  background: rgba(220, 38, 38, 0.1);
+  background: var(--danger-glow);
   color: var(--danger);
 }
 
@@ -96,23 +99,21 @@
 }
 
 .problem-tag {
-  background: var(--background);
+  background: var(--border-light);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
 }
 
-/* ==========================================================================
-   LeetCode Split Screen Detail Page Layout
-   ========================================================================== */
+/* ================= Split Screen Layout ================= */
 .split-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  height: calc(100vh - 100px);
+  height: calc(100vh - 88px);
   gap: 12px;
-  margin: -12px;
+  margin: -24px;
   padding: 12px;
   background: var(--background);
   overflow: hidden;
@@ -126,7 +127,7 @@
   }
 }
 
-/* Left Panel - Details & Description */
+/* Left Panel - Description & Submissions */
 .left-pane {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -144,39 +145,39 @@
 }
 
 .pane-tab {
-  padding: 12px 24px;
-  font-size: 14px;
-  font-weight: 500;
+  padding: 14px 24px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-secondary);
   border-right: 1px solid var(--border);
-  transition: all var(--transition);
+  transition: all var(--transition-fast);
 }
 
 .pane-tab.active {
   background: var(--surface);
   color: var(--primary);
-  font-weight: 600;
   border-bottom: 2px solid var(--primary);
 }
 
 .pane-content {
   flex: 1;
-  padding: 24px;
+  padding: 28px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .pane-content h2 {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
   margin: 0;
 }
 
 .problem-meta-row {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   align-items: center;
 }
 
@@ -184,7 +185,7 @@
   font-size: 15px;
   line-height: 1.6;
   color: var(--text-primary);
-  white-space: pre-line;
+  white-space: pre-wrap;
 }
 
 .example-box {
@@ -199,17 +200,22 @@
 }
 
 .example-box code {
-  font-family: monospace;
-  background: rgba(0,0,0,0.03);
-  padding: 2px 4px;
+  font-family: SFMono-Regular, Consolas, monospace;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 2px 6px;
   border-radius: 4px;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .example-box code {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .constraints-list {
   padding-left: 20px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   font-size: 14px;
   color: var(--text-secondary);
 }
@@ -245,7 +251,7 @@
 .editor-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .editor-select {
@@ -255,7 +261,7 @@
   background: var(--surface);
   color: var(--text-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   outline: none;
 }
 
@@ -266,12 +272,11 @@
   padding: 6px 12px;
   border-radius: var(--radius-sm);
   font-size: 13px;
-  font-weight: 500;
-  transition: background var(--transition);
+  font-weight: 600;
 }
 
 .editor-btn:hover {
-  background: var(--border);
+  background: var(--border-light);
 }
 
 .monaco-wrapper {
@@ -281,23 +286,26 @@
   position: relative;
 }
 
-/* Console / Results Drawer */
+/* Console Drawer */
 .results-drawer {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
-  max-height: 250px;
-  min-height: 160px;
+  max-height: 280px;
+  min-height: 180px;
+  box-shadow: var(--shadow-lg);
 }
 
 .drawer-header {
-  padding: 10px 16px;
+  padding: 12px 18px;
   background: var(--background);
   border-bottom: 1px solid var(--border);
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--text-secondary);
   display: flex;
   justify-content: space-between;
@@ -306,12 +314,12 @@
 
 .drawer-content {
   flex: 1;
-  padding: 16px;
+  padding: 20px;
   overflow-y: auto;
   font-size: 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .results-footer {
@@ -319,12 +327,12 @@
   justify-content: flex-end;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 12px 20px;
   background: var(--background);
   border-top: 1px solid var(--border);
 }
 
-/* Submission tab results list */
+/* Submissions tab lists */
 .submissions-list {
   display: flex;
   flex-direction: column;
@@ -335,7 +343,7 @@
   border: 1px solid var(--border);
   background: var(--background);
   border-radius: var(--radius-sm);
-  padding: 12px 16px;
+  padding: 14px 18px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -350,10 +358,7 @@
   color: var(--success);
 }
 
-.submission-status.wrong_answer {
-  color: var(--danger);
-}
-
+.submission-status.wrong_answer,
 .submission-status.runtime_error,
 .submission-status.compilation_error {
   color: var(--danger);
@@ -363,7 +368,7 @@
   font-size: 12px;
   color: var(--text-secondary);
   display: flex;
-  gap: 12px;
+  gap: 16px;
 }
 
 .terminal-success {
@@ -374,30 +379,32 @@
 .terminal-error {
   color: var(--danger);
   font-weight: 600;
-  font-family: monospace;
-  background: rgba(220, 38, 38, 0.05);
-  padding: 8px;
-  border-radius: 4px;
+  font-family: SFMono-Regular, Consolas, monospace;
+  background: var(--danger-glow);
+  border: 1px solid var(--danger);
+  padding: 12px;
+  border-radius: var(--radius-sm);
   white-space: pre-wrap;
 }
 
 .testcase-tab-header {
   display: flex;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .testcase-tab {
-  padding: 4px 10px;
+  padding: 6px 12px;
   font-size: 12px;
-  border-radius: 4px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--background);
-  cursor: pointer;
+  color: var(--text-secondary);
 }
 
 .testcase-tab.active {
-  background: var(--primary);
-  color: white;
+  background: var(--primary-glow);
+  color: var(--primary);
   border-color: var(--primary);
 }
