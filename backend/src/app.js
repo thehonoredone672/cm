@@ -61,6 +61,12 @@ const teamInviteRoutes = require(
   "./modules/teamInvites/teamInvites.routes"
 );
 
+const teamRoutes = require("./modules/teams/teams.routes");
+const problemRoutes = require("./modules/problems/problems.routes");
+const submissionRoutes = require("./modules/submissions/submissions.routes");
+const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
+const notificationRoutes = require("./modules/notifications/notifications.routes");
+
 const app = express();
 
 app.use(helmet());
@@ -133,6 +139,31 @@ app.use(
 app.use(
   "/api/team-invites",
   teamInviteRoutes
+);
+
+app.use(
+  "/api/teams",
+  teamRoutes
+);
+
+app.use(
+  "/api/problems",
+  problemRoutes
+);
+
+app.use(
+  "/api/submissions",
+  submissionRoutes
+);
+
+app.use(
+  "/api/dashboard",
+  dashboardRoutes
+);
+
+app.use(
+  "/api/notifications",
+  notificationRoutes
 );
 
 app.use(errorMiddleware);

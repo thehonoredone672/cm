@@ -24,22 +24,23 @@ const sendInvite = async (
     );
   }
 
-  const existing =
-    await prisma.teamInvite.findFirst({
-      where: {
-        senderId,
-        receiverId,
-        status: "PENDING",
-      },
-    });
+  const existing = await prisma.teamInvite.findFirst({
+    where: {
+      OR: [
+        { senderId, receiverId, status: { in: ["PENDING", "ACCEPTED"] } },
+        { senderId: receiverId, receiverId: senderId, status: { in: ["PENDING", "ACCEPTED"] } }
+      ]
+    }
+  });
 
   if (existing) {
-    throw new Error(
-      "Invite already sent."
-    );
+    if (existing.status === "ACCEPTED") {
+      throw new Error("You are already connected as teammates.");
+    }
+    throw new Error("A pending invitation already exists between you.");
   }
 
-  return prisma.teamInvite.create({
+  const invite = await prisma.teamInvite.create({
     data: {
       senderId,
       receiverId,
@@ -64,6 +65,21 @@ const sendInvite = async (
       },
     },
   });
+
+  try {
+    const { createNotification } = require("../notifications/notifications.service");
+    await createNotification(
+      receiverId,
+      "INVITE",
+      "New Collaboration Invite",
+      `${invite.sender.name} invited you to collaborate.`,
+      "/invites/received"
+    );
+  } catch (err) {
+    console.error("Failed to generate invite notification", err);
+  }
+
+  return invite;
 };
 
 const getSentInvites =
@@ -136,15 +152,36 @@ const acceptInvite =
       );
     }
 
-    return prisma.teamInvite.update({
-      where: {
-        id: inviteId,
-      },
+    return prisma.$transaction(async (tx) => {
+      const updatedInvite = await tx.teamInvite.update({
+        where: {
+          id: inviteId,
+        },
 
-      data: {
-        status:
-          "ACCEPTED",
-      },
+        data: {
+          status:
+            "ACCEPTED",
+        },
+        include: {
+          sender: { select: { name: true } },
+          receiver: { select: { name: true } },
+        }
+      });
+
+      try {
+        const { createNotification } = require("../notifications/notifications.service");
+        await createNotification(
+          updatedInvite.senderId,
+          "INVITE",
+          "Invitation Accepted",
+          `${updatedInvite.receiver.name} accepted your team invitation.`,
+          "/chat"
+        );
+      } catch (err) {
+        console.error("Failed to generate invite accepted notification", err);
+      }
+
+      return updatedInvite;
     });
   };
 

@@ -24,6 +24,7 @@ export default function ChatWindow({
 
   const bottomRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -44,13 +45,17 @@ export default function ChatWindow({
   function handleChange(e) {
     setDraft(e.target.value);
 
-    onTyping();
+    if (!isTypingRef.current) {
+      isTypingRef.current = true;
+      onTyping();
+    }
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
 
     typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
       onStopTyping();
     }, 1500);
   }

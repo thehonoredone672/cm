@@ -90,6 +90,7 @@ const initializeSocket = (server) => {
     );
 
     addOnlineSocket(userId, socket.id);
+    socket.join(userId);
     broadcastOnlineUsers();
 
     socket.on("join_conversation", async (conversationId) => {

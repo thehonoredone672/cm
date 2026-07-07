@@ -77,7 +77,20 @@ export default function Chat() {
       const current = selectedConversationRef.current;
 
       if (current && message.conversationId === current.id) {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === message.id)) {
+            return prev;
+          }
+          const optimisticIndex = prev.findIndex(
+            (m) => m.isOptimistic && m.text === message.text && m.senderId === message.senderId
+          );
+          if (optimisticIndex !== -1) {
+            const updated = [...prev];
+            updated[optimisticIndex] = message;
+            return updated;
+          }
+          return [...prev, message];
+        });
 
         if (message.senderId !== user.id) {
           markConversationSeen(current.id).catch(() => {});
@@ -198,10 +211,28 @@ export default function Chat() {
   async function handleSendMessage(text) {
     if (!selectedConversation) return;
 
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage = {
+      id: tempId,
+      conversationId: selectedConversation.id,
+      senderId: user.id,
+      text,
+      createdAt: new Date().toISOString(),
+      sender: {
+        id: user.id,
+        name: user.name,
+      },
+      isOptimistic: true,
+    };
+
+    setMessages((prev) => [...prev, optimisticMessage]);
+
     try {
       const message = await sendMessage(selectedConversation.id, text);
 
-      setMessages((prev) => [...prev, message]);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === tempId ? message : m))
+      );
 
       setConversations((prev) =>
         prev.map((conversation) =>
@@ -212,6 +243,7 @@ export default function Chat() {
       );
     } catch (err) {
       console.error(err);
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
     }
   }
 

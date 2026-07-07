@@ -10,6 +10,10 @@ import Matches from "./pages/Matches/Matches";
 import ReceivedInvites from "./pages/Invites/ReceivedInvites";
 import SentInvites from "./pages/Invites/SentInvites";
 import Chat from "./pages/Chat/Chat";
+import TeamsList from "./pages/Teams/TeamsList";
+import TeamDetails from "./pages/Teams/TeamDetails";
+import ProblemList from "./pages/Problems/ProblemList";
+import ProblemDetails from "./pages/Problems/ProblemDetails";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -105,6 +109,50 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <Chat />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/teams"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TeamsList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/teams/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TeamDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/problems"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ProblemList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/problems/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ProblemDetails />
               </MainLayout>
             </ProtectedRoute>
           }

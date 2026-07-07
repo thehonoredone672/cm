@@ -3,8 +3,10 @@ import "./Matches.css";
 
 import InviteModal from "../../components/InviteModal/InviteModal";
 import { getMatches } from "../../services/matchService";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Matches() {
+  const { user: currentUser } = useAuth();
   const [matches, setMatches] = useState([]);
   const [filteredMatches, setFilteredMatches] = useState([]);
   const [search, setSearch] = useState("");
@@ -50,9 +52,12 @@ export default function Matches() {
     setInviteOpen(true);
   }
 
-  function closeInviteModal() {
+  function closeInviteModal(didSend) {
     setInviteOpen(false);
     setSelectedMatch(null);
+    if (didSend === true) {
+      loadMatches();
+    }
   }
 
   if (loading) {
@@ -184,12 +189,28 @@ export default function Matches() {
                   View Profile
                 </button>
 
-                <button
-                  className="secondary-btn"
-                  onClick={() => openInviteModal(user)}
-                >
-                  Invite
-                </button>
+                {!user.inviteStatus || user.inviteStatus.status === "REJECTED" ? (
+                  <button
+                    className="secondary-btn"
+                    onClick={() => openInviteModal(user)}
+                  >
+                    Invite
+                  </button>
+                ) : user.inviteStatus.status === "PENDING" ? (
+                  <button
+                    className="secondary-btn pending"
+                    disabled
+                  >
+                    {user.inviteStatus.senderId === currentUser?.id ? "Invite Pending" : "Received Invite"}
+                  </button>
+                ) : (
+                  <button
+                    className="secondary-btn accepted"
+                    disabled
+                  >
+                    Teammates
+                  </button>
+                )}
 
               </div>
 

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 function formatPreviewTime(dateString) {
   if (!dateString) return "";
 
@@ -18,6 +20,8 @@ export default function ConversationList({
   onSelectConversation,
   onStartChat,
 }) {
+  const [search, setSearch] = useState("");
+
   const conversationPartnerIds = new Set(
     conversations.map((conversation) => {
       const other = conversation.participants.find(
@@ -32,22 +36,45 @@ export default function ConversationList({
     (teammate) => !conversationPartnerIds.has(teammate.id)
   );
 
+  const filteredConversations = conversations.filter((conversation) => {
+    const other = conversation.participants.find(
+      (participant) => participant.userId !== currentUserId
+    )?.user;
+    return other?.name?.toLowerCase().includes(search.toLowerCase());
+  });
+
   return (
     <div className="conversation-list">
 
-      <div className="conversation-list__header">
-        <h2>Chats</h2>
+      <div className="conversation-list__header" style={{ display: "flex", flexDirection: "column", gap: "8px", paddingBottom: "12px" }}>
+        <h2 style={{ margin: 0 }}>Chats</h2>
+        <input
+          type="text"
+          placeholder="Search chats..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "8px 12px",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            background: "var(--background)",
+            color: "var(--text-primary)",
+            fontSize: "14px",
+            outline: "none"
+          }}
+        />
       </div>
 
       <div className="conversation-list__items">
 
-        {conversations.length === 0 && (
+        {filteredConversations.length === 0 && (
           <p className="conversation-list__empty">
-            No conversations yet. Start one below.
+            {search ? "No matching chats found." : "No conversations yet. Start one below."}
           </p>
         )}
 
-        {conversations.map((conversation) => {
+        {filteredConversations.map((conversation) => {
           const other = conversation.participants.find(
             (participant) => participant.userId !== currentUserId
           )?.user;

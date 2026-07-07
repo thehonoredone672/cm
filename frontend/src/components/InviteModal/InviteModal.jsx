@@ -42,7 +42,7 @@ export default function InviteModal({
       setMessage("");
 
       setTimeout(() => {
-        onClose();
+        onClose(true);
       }, 1200);
     } catch (err) {
       console.error(err);

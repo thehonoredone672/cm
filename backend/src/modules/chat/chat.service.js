@@ -339,6 +339,28 @@ const sendMessage = async (
     message
   );
 
+  try {
+    const participants = await prisma.conversationParticipant.findMany({
+      where: {
+        conversationId,
+        userId: { not: senderId }
+      }
+    });
+
+    const { createNotification } = require("../notifications/notifications.service");
+    for (const p of participants) {
+      await createNotification(
+        p.userId,
+        "CHAT",
+        `New message from ${message.sender.name}`,
+        text.length > 50 ? text.substring(0, 50) + "..." : text,
+        "/chat"
+      );
+    }
+  } catch (err) {
+    console.error("Failed to generate chat notification", err);
+  }
+
   return message;
 };
 

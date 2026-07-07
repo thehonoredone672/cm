@@ -69,6 +69,11 @@ model User {
   sentInvites     TeamInvite[] @relation("InviteSender")
   receivedInvites TeamInvite[] @relation("InviteReceiver")
 
+  teamsLed        Team[]       @relation("TeamLeader")
+  teamMemberships TeamMember[]
+  submissions     Submission[]
+  notifications   Notification[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -203,3 +208,88 @@ model TeamInvite {
   @@index([receiverId])
   @@index([status])
 }
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  joinCode    String   @unique
+  leaderId    String
+  leader      User     @relation("TeamLeader", fields: [leaderId], references: [id])
+  members     TeamMember[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  teamId   String
+  userId   String
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([teamId, userId])
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model Problem {
+  id          String       @id @default(uuid())
+  title       String
+  description String
+  category    String
+  difficulty  Difficulty   @default(EASY)
+  tags        String[]
+  constraints String?
+  starterCode Json         // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
+  examples    Json         // E.g. [{ input: "...", output: "...", explanation: "..." }]
+  testCases   TestCase[]
+  submissions Submission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model TestCase {
+  id             String   @id @default(uuid())
+  problemId      String
+  problem        Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  input          String
+  expectedOutput String
+  isPublic       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model Submission {
+  id              String   @id @default(uuid())
+  problemId       String
+  userId          String
+  code            String
+  language        String
+  status          String
+  errorMessage    String?
+  executionTime   Float?
+  memoryUsage     Int?
+  testCasesPassed Int      @default(0)
+  totalTestCases  Int      @default(0)
+  problem         Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+

@@ -199,6 +199,15 @@ const getMatches = async (
     );
   }
 
+  const invites = await prisma.teamInvite.findMany({
+    where: {
+      OR: [
+        { senderId: userId },
+        { receiverId: userId }
+      ]
+    }
+  });
+
   const otherUsers =
     users.filter(
       (user) =>
@@ -212,6 +221,12 @@ const getMatches = async (
           currentUser,
           user
         );
+
+      const invite = invites.find(
+        (i) =>
+          (i.senderId === userId && i.receiverId === user.id) ||
+          (i.senderId === user.id && i.receiverId === userId)
+      );
 
       return {
         id: user.id,
@@ -248,6 +263,13 @@ const getMatches = async (
 
         totalInterests:
           user.interests.length,
+
+        inviteStatus: invite ? {
+          id: invite.id,
+          status: invite.status,
+          senderId: invite.senderId,
+          receiverId: invite.receiverId,
+        } : null,
       };
     });
 
