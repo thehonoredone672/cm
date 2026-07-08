@@ -52,9 +52,11 @@ export const getMessages = async (conversationId) => {
   return response.data.data;
 };
 
-export const sendMessage = async (conversationId, text) => {
+export const sendMessage = async (conversationId, text, fileUrl = null, fileType = null) => {
   const response = await api.post(`/chat/message/${conversationId}`, {
     text,
+    fileUrl,
+    fileType,
   });
 
   return response.data.data;

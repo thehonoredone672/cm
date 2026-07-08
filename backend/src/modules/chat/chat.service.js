@@ -152,14 +152,15 @@ const getMessages = async (conversationId, userId, { limit = 50, before } = {}) 
   return messages;
 };
 
-const sendMessage = async (conversationId, senderId, text) => {
+const sendMessage = async (conversationId, senderId, text, fileUrl = null, fileType = null) => {
   const allowed = await isParticipant(conversationId, senderId);
   if (!allowed) throw new Error("Not authorized.");
 
-  if (!text || !text.trim()) throw new Error("Message cannot be empty.");
+  const msgText = text ? text.trim() : (fileUrl ? "Sent an attachment" : "");
+  if (!msgText && !fileUrl) throw new Error("Message cannot be empty.");
 
   const message = await prisma.message.create({
-    data: { conversationId, senderId, text: text.trim() },
+    data: { conversationId, senderId, text: msgText, fileUrl, fileType },
     include: { sender: { select: { id: true, name: true } } },
   });
 

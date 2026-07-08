@@ -1,7 +1,8 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getProblems } from "../../services/problemService";
 import { getSubmissions } from "../../services/submissionService";
+import { useAuth } from "../../context/AuthContext";
 import "./Problems.css";
 
 const DIFF_LABEL = { EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" };
@@ -9,6 +10,7 @@ const DIFF_CLASS = { EASY: "easy", MEDIUM: "medium", HARD: "hard" };
 
 export default function ProblemList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [problems, setProblems] = useState([]);
   const [solvedIds, setSolvedIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -50,16 +52,27 @@ export default function ProblemList() {
 
   return (
     <div className="lc-problems">
-      <div className="lc-problems__hero">
-        <h1>Problem Set</h1>
-        <p>Practice your skills and prepare for coding challenges.</p>
+      <div className="lc-problems__hero" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+        <div>
+          <h1>Problem Set</h1>
+          <p>Practice your skills and prepare for coding challenges.</p>
+        </div>
+        {user?.role === "ADMIN" && (
+          <button 
+            className="lc-submit-btn" 
+            onClick={() => navigate("/problems/admin")}
+            style={{ padding: "10px 20px" }}
+          >
+            ⚙ Admin Panel
+          </button>
+        )}
       </div>
 
       {/* Stats pills */}
       <div className="lc-stats">
-        <span className="lc-stat-pill lc-stat-pill--easy">? Easy: {counts.EASY}</span>
-        <span className="lc-stat-pill lc-stat-pill--medium">? Medium: {counts.MEDIUM}</span>
-        <span className="lc-stat-pill lc-stat-pill--hard">? Hard: {counts.HARD}</span>
+        <span className="lc-stat-pill lc-stat-pill--easy">🟢 Easy: {counts.EASY}</span>
+        <span className="lc-stat-pill lc-stat-pill--medium">🟡 Medium: {counts.MEDIUM}</span>
+        <span className="lc-stat-pill lc-stat-pill--hard">🔴 Hard: {counts.HARD}</span>
       </div>
 
       {/* Filters */}

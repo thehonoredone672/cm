@@ -1,0 +1,6 @@
+{
+  "watch": ["src"],
+  "ext": "js,mjs,cjs,json",
+  "ignore": ["src/**/*.spec.js", "temp/**", "prisma/seed*.js"],
+  "delay": 500
+}

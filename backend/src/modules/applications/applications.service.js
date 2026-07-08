@@ -18,7 +18,7 @@ const applyToTeamRequest = async (
     );
   }
 
-  return prisma.application.create({
+  const app = await prisma.application.create({
     data: {
       applicantId,
       teamRequestId,
@@ -36,6 +36,22 @@ const applyToTeamRequest = async (
       teamRequest: true,
     },
   });
+
+  // Trigger Team Application notification
+  try {
+    const { createNotification } = require("../notifications/notifications.service");
+    await createNotification(
+      app.teamRequest.creatorId,
+      "TEAM_APPLICATION",
+      "New Team Application",
+      `${app.applicant.name} applied to your team request "${app.teamRequest.title}".`,
+      "/dashboard"
+    );
+  } catch (err) {
+    console.error("Failed to trigger application notification", err);
+  }
+
+  return app;
 };
 
 const getMyApplications =
@@ -89,6 +105,7 @@ const updateApplicationStatus =
 
         include: {
           teamRequest: true,
+          applicant: true,
         },
       });
 
@@ -107,7 +124,7 @@ const updateApplicationStatus =
       );
     }
 
-    return prisma.application.update({
+    const updated = await prisma.application.update({
       where: {
         id: applicationId,
       },
@@ -116,6 +133,22 @@ const updateApplicationStatus =
         status,
       },
     });
+
+    // Trigger notification to applicant
+    try {
+      const { createNotification } = require("../notifications/notifications.service");
+      await createNotification(
+        application.applicantId,
+        "TEAM_APPLICATION",
+        `Application ${status.toLowerCase()}`,
+        `Your application for "${application.teamRequest.title}" was ${status.toLowerCase()}.`,
+        "/dashboard"
+      );
+    } catch (err) {
+      console.error("Failed to trigger application update notification", err);
+    }
+
+    return updated;
   };
 
 

@@ -1,0 +1,23 @@
+function solve(nums, target) {
+  const seen = new Map();
+
+  for (let i = 0; i < nums.length; i++) {
+    const need = target - nums[i];
+
+    if (seen.has(need)) {
+      return `${seen.get(need)},${i}`;
+    }
+
+    seen.set(nums[i], i);
+  }
+}
+
+const _fs = require('fs');
+try {
+  const _input = _fs.readFileSync(0, 'utf-8').trim();
+  const _result = solve(_input);
+  process.stdout.write(String(_result));
+} catch (e) {
+  process.stderr.write(String(e.message || e));
+  process.exit(1);
+}

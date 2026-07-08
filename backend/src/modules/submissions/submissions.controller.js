@@ -1,7 +1,7 @@
 "use strict";
 
 const prisma = require("../../config/prisma");
-const { executeCode } = require("./execution.service");
+const { executeCode, executeCustomCode } = require("./execution.service");
 
 const runCodeHandler = async (req, res, next) => {
   try {
@@ -19,6 +19,21 @@ const runCodeHandler = async (req, res, next) => {
     if (!problem.testCases.length) return res.status(400).json({ success: false, message: "No public test cases for this problem." });
 
     const result = await executeCode(code, language, problem.testCases);
+
+    return res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const runCustomTestCaseHandler = async (req, res, next) => {
+  try {
+    const { code, language, customInput } = req.body;
+    if (!code || !language) {
+      return res.status(400).json({ success: false, message: "code and language are required." });
+    }
+
+    const result = await executeCustomCode(code, language, customInput || "");
 
     return res.status(200).json({ success: true, data: result });
   } catch (err) {
@@ -63,6 +78,21 @@ const submitCodeHandler = async (req, res, next) => {
       },
     });
 
+    if (executionResult.status === "ACCEPTED") {
+      try {
+        const { createNotification } = require("../notifications/notifications.service");
+        await createNotification(
+          req.user.id,
+          "SUBMISSION",
+          "Problem Solved!",
+          `Congratulations! You solved "${problem.title}".`,
+          `/problems/${problemId}`
+        );
+      } catch (err) {
+        console.error("Failed to trigger submission notification", err);
+      }
+    }
+
     return res.status(201).json({
       success: true,
       data: { submission, executionResult },
@@ -86,4 +116,10 @@ const getProblemSubmissionsHandler = async (req, res, next) => {
   }
 };
 
-module.exports = { runCodeHandler, submitCodeHandler, getProblemSubmissionsHandler };
+module.exports = {
+  runCodeHandler,
+  runCustomTestCaseHandler,
+  submitCodeHandler,
+  getProblemSubmissionsHandler,
+};
+

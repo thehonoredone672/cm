@@ -6,6 +6,8 @@ const {
   leaveTeam,
   removeMember,
   updateTeam,
+  updateMemberRole,
+  inviteToTeamByEmail,
 } = require("./teams.service");
 
 const createTeamHandler = async (req, res, next) => {
@@ -71,6 +73,26 @@ const updateTeamHandler = async (req, res, next) => {
   }
 };
 
+const updateMemberRoleHandler = async (req, res, next) => {
+  try {
+    const { role } = req.body;
+    const member = await updateMemberRole(req.user.id, req.params.id, req.params.userId, role);
+    res.status(200).json({ success: true, message: "Member role updated successfully", data: member });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const inviteMemberHandler = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const result = await inviteToTeamByEmail(req.user.id, req.params.id, email);
+    res.status(200).json({ success: true, message: result.message });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createTeamHandler,
   getTeamsHandler,
@@ -79,4 +101,7 @@ module.exports = {
   leaveTeamHandler,
   removeMemberHandler,
   updateTeamHandler,
+  updateMemberRoleHandler,
+  inviteMemberHandler,
 };
+

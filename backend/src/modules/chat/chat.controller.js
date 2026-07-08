@@ -23,7 +23,8 @@ const markSeenHandler = asyncHandler(async (req, res) => {
 });
 
 const sendMessageHandler = asyncHandler(async (req, res) => {
-  const message = await sendMessage(req.params.id, req.user.id, req.body.text);
+  const { text, fileUrl, fileType } = req.body;
+  const message = await sendMessage(req.params.id, req.user.id, text, fileUrl, fileType);
   res.status(201).json({ success: true, data: message });
 });
 

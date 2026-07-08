@@ -34,3 +34,13 @@ export const updateTeam = async (teamId, data) => {
   const response = await api.put(`/teams/${teamId}`, data);
   return response.data.data;
 };
+
+export const updateMemberRole = async (teamId, userId, role) => {
+  const response = await api.put(`/teams/${teamId}/members/${userId}/role`, { role });
+  return response.data.data;
+};
+
+export const inviteToTeamByEmail = async (teamId, email) => {
+  const response = await api.post(`/teams/${teamId}/invite`, { email });
+  return response.data;
+};

@@ -27,6 +27,8 @@ const createProblemSchema = z.object({
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]),
   tags: z.array(z.string()).default([]),
   constraints: z.string().optional(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).default("PUBLISHED"),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
   starterCode: starterCodeSchema,
   examples: z.array(exampleSchema).default([]),
   testCases: z.array(testCaseInputSchema).min(1, "At least one testcase is required"),
@@ -39,6 +41,8 @@ const updateProblemSchema = z.object({
   difficulty: z.enum(["EASY", "MEDIUM", "HARD"]).optional(),
   tags: z.array(z.string()).optional(),
   constraints: z.string().optional(),
+  status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]).optional(),
   starterCode: starterCodeSchema.optional(),
   examples: z.array(exampleSchema).optional(),
   testCases: z.array(testCaseInputSchema).optional(),
@@ -48,3 +52,4 @@ module.exports = {
   createProblemSchema,
   updateProblemSchema,
 };
+

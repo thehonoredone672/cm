@@ -18,14 +18,23 @@ const createProblem = async (data) => {
   });
 };
 
-const getAllProblems = async () => {
+const getAllProblems = async (userRole) => {
+  const where = {};
+  if (userRole !== "ADMIN") {
+    where.status = "PUBLISHED";
+    where.visibility = "PUBLIC";
+  }
+
   return prisma.problem.findMany({
+    where,
     select: {
       id: true,
       title: true,
       category: true,
       difficulty: true,
       tags: true,
+      status: true,
+      visibility: true,
       createdAt: true,
     },
     orderBy: {
@@ -47,6 +56,9 @@ const getProblemById = async (id, userRole) => {
   }
 
   if (userRole !== "ADMIN") {
+    if (problem.status !== "PUBLISHED" || problem.visibility !== "PUBLIC") {
+      throw new Error("Problem not found");
+    }
     problem.testCases = problem.testCases.filter((tc) => tc.isPublic);
   }
 

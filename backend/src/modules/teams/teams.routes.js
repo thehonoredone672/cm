@@ -10,6 +10,8 @@ const {
   leaveTeamHandler,
   removeMemberHandler,
   updateTeamHandler,
+  updateMemberRoleHandler,
+  inviteMemberHandler,
 } = require("./teams.controller");
 
 const router = express.Router();
@@ -21,5 +23,8 @@ router.post("/join", protect, validate(joinTeamSchema), joinTeamHandler);
 router.post("/:id/leave", protect, leaveTeamHandler);
 router.post("/:id/remove/:userId", protect, removeMemberHandler);
 router.put("/:id", protect, validate(updateTeamSchema), updateTeamHandler);
+router.put("/:id/members/:userId/role", protect, updateMemberRoleHandler);
+router.post("/:id/invite", protect, inviteMemberHandler);
 
 module.exports = router;
+

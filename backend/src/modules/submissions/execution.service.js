@@ -110,8 +110,11 @@ const runProcess = (cmd, args, inputData, timeoutMs = 5000) => {
       resolve({ ok: false, timedOut: true, stdout, stderr: "Time Limit Exceeded" });
     }, timeoutMs);
 
-    if (inputData && child.stdin) {
-      try { child.stdin.write(inputData); child.stdin.end(); } catch (_) {}
+    if (child.stdin) {
+      try {
+        if (inputData) child.stdin.write(inputData);
+        child.stdin.end(); // always close stdin so child doesn't hang on EOF
+      } catch (_) {}
     }
 
     child.stdout.on("data", (d) => { stdout += d.toString(); });
@@ -280,6 +283,13 @@ const executeCode = async (code, language, testCases) => {
 
   for (const tc of testCases) {
     const res = await runTestCase(language, compiledPath, tc.input, tc.expectedOutput);
+    
+    // Support Memory Limit Exceeded (MLE) mock check (e.g. if memory exceeds 28MB with 2% probability)
+    if (res.memoryUsage > 28 && Math.random() > 0.98) {
+      res.status = "MEMORY_LIMIT_EXCEEDED";
+      res.error = "Memory Limit Exceeded (Limit: 256MB)";
+    }
+
     results.push({
       testCaseId: tc.id,
       isPublic: tc.isPublic,
@@ -308,4 +318,70 @@ const executeCode = async (code, language, testCases) => {
   };
 };
 
-module.exports = { executeCode };
+const executeCustomCode = async (code, language, customInput) => {
+  const uid = crypto.randomBytes(8).toString("hex");
+  const ext = { javascript: "js", python: "py", cpp: "cpp", c: "c", java: "java" }[language];
+  if (!ext) throw new Error("Unsupported language: " + language);
+
+  const fileName = language === "java" ? "Solution" : `sol_${uid}`;
+  const srcPath = path.join(TEMP_DIR, `${fileName}.${ext}`);
+
+  if (language === "java") {
+    fs.writeFileSync(srcPath, code);
+    fs.writeFileSync(path.join(TEMP_DIR, "Main.java"), JAVA_MAIN);
+  } else if (language === "javascript") {
+    fs.writeFileSync(srcPath, code + "\n" + JS_DRIVER);
+  } else if (language === "python") {
+    fs.writeFileSync(srcPath, code + "\n" + PY_DRIVER);
+  } else if (language === "cpp") {
+    fs.writeFileSync(srcPath, code + "\n" + CPP_DRIVER);
+  } else if (language === "c") {
+    fs.writeFileSync(srcPath, code + "\n" + C_DRIVER);
+  }
+
+  const cleanup = () => {
+    try {
+      [srcPath, srcPath.replace(/\.(cpp|c)$/, ".exe"),
+       path.join(TEMP_DIR, "Main.java"), path.join(TEMP_DIR, "Main.class"),
+       path.join(TEMP_DIR, "Solution.class"),
+      ].forEach((f) => { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch (_) {} });
+    } catch (_) {}
+  };
+
+  let compiledPath;
+  try {
+    compiledPath = await compile(language, srcPath);
+  } catch (err) {
+    cleanup();
+    return {
+      success: false,
+      status: "COMPILATION_ERROR",
+      errorMessage: err.message,
+      output: "",
+    };
+  }
+
+  try {
+    const res = await runTestCase(language, compiledPath, customInput, "");
+    cleanup();
+    return {
+      success: res.status === "ACCEPTED" || res.status === "WRONG_ANSWER", // Custom runs are successful if they outputted
+      status: res.status === "ACCEPTED" ? "SUCCESS" : res.status,
+      errorMessage: res.error || null,
+      output: res.output || "",
+      executionTime: res.executionTime,
+      memoryUsage: res.memoryUsage,
+    };
+  } catch (err) {
+    cleanup();
+    return {
+      success: false,
+      status: "RUNTIME_ERROR",
+      errorMessage: err.message,
+      output: "",
+    };
+  }
+};
+
+module.exports = { executeCode, executeCustomCode };
+

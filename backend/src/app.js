@@ -66,6 +66,8 @@ const problemRoutes = require("./modules/problems/problems.routes");
 const submissionRoutes = require("./modules/submissions/submissions.routes");
 const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
 const notificationRoutes = require("./modules/notifications/notifications.routes");
+const projectRoutes = require("./modules/projects/projects.routes");
+const recommendationRoutes = require("./modules/recommendations/recommendations.routes");
 
 const app = express();
 
@@ -164,6 +166,16 @@ app.use(
 app.use(
   "/api/notifications",
   notificationRoutes
+);
+
+app.use(
+  "/api/projects",
+  projectRoutes
+);
+
+app.use(
+  "/api/recommendations",
+  recommendationRoutes
 );
 
 app.use(errorMiddleware);

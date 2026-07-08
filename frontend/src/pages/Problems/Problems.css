@@ -374,15 +374,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   background: var(--surface);
   border-bottom: 1.5px solid var(--border);
   flex-shrink: 0;
-  flex-wrap: wrap;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
 }
 
 .lc-lang-select {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--border);
   background: var(--background);
@@ -392,11 +394,12 @@
   outline: none;
   cursor: pointer;
   transition: border-color .15s;
+  flex-shrink: 0;
 }
 .lc-lang-select:focus { border-color: var(--primary); }
 
 .lc-editor-btn {
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: var(--radius-sm);
   border: 1.5px solid var(--border);
   background: var(--background);
@@ -406,6 +409,7 @@
   cursor: pointer;
   transition: all .15s;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .lc-editor-btn:hover { background: var(--surface); color: var(--text-primary); border-color: var(--primary); }
 .lc-editor-btn--active { background: var(--primary-glow); border-color: var(--primary); color: var(--primary); }
@@ -416,6 +420,8 @@
   font-weight: 700;
   color: var(--text-muted);
   margin-left: auto;
+  flex-shrink: 0;
+  padding-left: 4px;
 }
 
 .lc-monaco { flex: 1; min-height: 0; }
@@ -438,11 +444,12 @@
 .lc-console__header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 9px 14px;
   border-bottom: 1px solid var(--border);
   background: var(--background);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .lc-console__title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
@@ -591,7 +598,9 @@
   background: var(--surface);
   border-top: 1.5px solid var(--border);
   flex-shrink: 0;
-  flex-wrap: wrap;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
 }
 
 .lc-run-btn {

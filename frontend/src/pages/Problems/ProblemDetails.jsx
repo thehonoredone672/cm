@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Editor from "@monaco-editor/react";
 import { getProblemDetails } from "../../services/problemService";
-import { runCode, submitCode, getSubmissions } from "../../services/submissionService";
+import { runCode, submitCode, getSubmissions, runCustomCode } from "../../services/submissionService";
 import "./Problems.css";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -58,6 +58,7 @@ const STATUS_META = {
   RUNTIME_ERROR:        { label: "Runtime Error",         icon: "⚠", cls: "runtime_error"        },
   TIME_LIMIT_EXCEEDED:  { label: "Time Limit Exceeded",   icon: "⌛", cls: "time_limit_exceeded"  },
   COMPILATION_ERROR:    { label: "Compilation Error",     icon: "⊘", cls: "compilation_error"    },
+  MEMORY_LIMIT_EXCEEDED: { label: "Memory Limit Exceeded", icon: "🔴", cls: "runtime_error"      },
 };
 
 // ─── Timer Hook ─────────────────────────────────────────────────────────────────
@@ -97,6 +98,10 @@ export default function ProblemDetails() {
   const [execResult,   setExecResult]   = useState(null);
   const [consoleOpen,  setConsoleOpen]  = useState(false);
   const [selectedCase, setSelectedCase] = useState(0);
+
+  const [customInputEnabled, setCustomInputEnabled] = useState(false);
+  const [customInput, setCustomInput] = useState("");
+  const [consoleTab, setConsoleTab] = useState("result"); // "testcase" or "result"
 
   const timerLabel = useTimer(!loading && !!problem);
 
@@ -167,14 +172,36 @@ export default function ProblemDetails() {
       setExecMode("run");
       setExecResult(null);
       setConsoleOpen(true);
+      setConsoleTab("result");
       setSelectedCase(0);
-      const result = await runCode(id, code, language);
-      setExecResult(result);
+
+      if (customInputEnabled) {
+        const result = await runCustomCode(code, language, customInput);
+        setExecResult({
+          success: result.success,
+          status: result.status === "SUCCESS" ? "ACCEPTED" : result.status,
+          errorMessage: result.errorMessage,
+          executionTime: result.executionTime,
+          memoryUsage: result.memoryUsage,
+          results: [
+            {
+              input: customInput,
+              output: result.output,
+              expected: "N/A (Custom Run)",
+              status: result.status === "SUCCESS" ? "ACCEPTED" : result.status,
+            }
+          ]
+        });
+      } else {
+        const result = await runCode(id, code, language);
+        setExecResult(result);
+      }
     } catch (err) {
+      const msg = err.displayMessage || err.response?.data?.message || err.message || "Run failed.";
       setExecResult({
         success: false,
         status: "RUNTIME_ERROR",
-        errorMessage: err.response?.data?.message || "Execution failed. Check your network.",
+        errorMessage: msg,
         results: [],
       });
     } finally {
@@ -198,10 +225,11 @@ export default function ProblemDetails() {
       setExecResult(result);
       if (leftTab === "submissions") loadSubs();
     } catch (err) {
+      const msg = err.displayMessage || err.response?.data?.message || err.message || "Submission failed.";
       setExecResult({
         success: false,
         status: "RUNTIME_ERROR",
-        errorMessage: err.response?.data?.message || "Submission failed. Check your network.",
+        errorMessage: msg,
         results: [],
       });
     } finally {
@@ -437,26 +465,65 @@ export default function ProblemDetails() {
 
         {/* Sliding console drawer */}
         <div className={`lc-console${consoleOpen ? " lc-console--visible" : " lc-console--hidden"}`}>
-          <div className="lc-console__header">
-            <span className="lc-console__title">
-              {execMode === "run" ? "▶ Test Results" : execMode === "submit" ? "✓ Submit Results" : "Console"}
-            </span>
+          <div className="lc-console__header" style={{ padding: "4px 14px", borderBottom: "1px solid var(--border)" }}>
+            <button
+              onClick={() => setConsoleTab("testcase")}
+              className={`lc-panel-tab${consoleTab === "testcase" ? " lc-panel-tab--active" : ""}`}
+              style={{ padding: "8px 12px", background: "transparent", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer", color: consoleTab === "testcase" ? "var(--primary)" : "var(--text-secondary)" }}
+            >
+              Testcase
+            </button>
+            <button
+              onClick={() => setConsoleTab("result")}
+              className={`lc-panel-tab${consoleTab === "result" ? " lc-panel-tab--active" : ""}`}
+              style={{ padding: "8px 12px", background: "transparent", border: "none", fontSize: "13px", fontWeight: "600", cursor: "pointer", color: consoleTab === "result" ? "var(--primary)" : "var(--text-secondary)" }}
+            >
+              Result
+            </button>
             {execResult && !executing && statusMeta && (
-              <span className={`lc-console__badge lc-console__badge--${statusMeta.cls}`}>
+              <span className={`lc-console__badge lc-console__badge--${statusMeta.cls}`} style={{ marginLeft: 12 }}>
                 {statusMeta.icon} {statusMeta.label}
               </span>
             )}
-            <button className="lc-console__close" onClick={() => setConsoleOpen(false)}>✕</button>
+            <button className="lc-console__close" style={{ marginLeft: "auto" }} onClick={() => setConsoleOpen(false)}>✕</button>
           </div>
 
           <div className="lc-console__body">
-            {/* Running state */}
-            {executing ? (
+            {consoleTab === "testcase" ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", height: "100%" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: 13, cursor: "pointer", color: "var(--text-primary)" }}>
+                  <input
+                    type="checkbox"
+                    checked={customInputEnabled}
+                    onChange={(e) => setCustomInputEnabled(e.target.checked)}
+                  />
+                  Enable Custom Stdin
+                </label>
+                <textarea
+                  placeholder="Enter custom input string here..."
+                  value={customInput}
+                  disabled={!customInputEnabled}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  style={{
+                    width: "100%",
+                    flex: 1,
+                    minHeight: "120px",
+                    background: "var(--background)",
+                    border: "1.5px solid var(--border)",
+                    color: "var(--text-primary)",
+                    fontFamily: "monospace",
+                    padding: "10px",
+                    borderRadius: "6px",
+                    resize: "none"
+                  }}
+                />
+              </div>
+            ) : executing ? (
               <div className="lc-spinner">
                 <div className="lc-spin" />
                 <span>
                   {execMode === "run"
-                    ? "Running against sample test cases…"
+                    ? "Running against test cases…"
                     : "Submitting and evaluating all test cases…"}
                 </span>
               </div>

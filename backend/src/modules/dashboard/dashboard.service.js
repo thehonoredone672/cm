@@ -91,7 +91,68 @@ const getDashboardStats = async (userId) => {
     unreadMessagesCount += count;
   }
 
-  // 8. Recent Activity
+  // 8. Coding Stats (Student Analytics)
+  const submissionsCount = await prisma.submission.count({
+    where: { userId },
+  });
+
+  const solvedProblems = await prisma.submission.findMany({
+    where: { userId, status: "ACCEPTED" },
+    select: {
+      problem: {
+        select: {
+          id: true,
+          title: true,
+          difficulty: true,
+        },
+      },
+    },
+  });
+
+  const uniqueSolvedIds = new Set(solvedProblems.map((s) => s.problem.id));
+  const solvedCount = uniqueSolvedIds.size;
+  const successRate = submissionsCount > 0 ? Math.round((solvedCount / submissionsCount) * 100) : 0;
+
+  const easySolved = Array.from(new Set(solvedProblems.filter(p => p.problem.difficulty === "EASY").map(p => p.problem.id))).length;
+  const mediumSolved = Array.from(new Set(solvedProblems.filter(p => p.problem.difficulty === "MEDIUM").map(p => p.problem.id))).length;
+  const hardSolved = Array.from(new Set(solvedProblems.filter(p => p.problem.difficulty === "HARD").map(p => p.problem.id))).length;
+
+  // Submission timeline for Heatmap (last 7 days submission counts)
+  const last7Days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    d.setHours(0,0,0,0);
+    last7Days.push({
+      date: d.toLocaleDateString([], { month: "short", day: "numeric" }),
+      count: 0,
+      rawDate: d,
+    });
+  }
+
+  const submissions = await prisma.submission.findMany({
+    where: { userId },
+    select: { createdAt: true },
+  });
+
+  submissions.forEach((sub) => {
+    const subDate = new Date(sub.createdAt);
+    subDate.setHours(0,0,0,0);
+    const day = last7Days.find(d => d.rawDate.getTime() === subDate.getTime());
+    if (day) day.count++;
+  });
+
+  const codingSummary = {
+    submissionsCount,
+    solvedCount,
+    successRate,
+    easySolved,
+    mediumSolved,
+    hardSolved,
+    heatmap: last7Days.map(d => ({ date: d.date, count: d.count })),
+  };
+
+  // 9. Recent Activity
   const recentInvites = await prisma.teamInvite.findMany({
     where: {
       OR: [{ senderId: userId }, { receiverId: userId }],
@@ -168,6 +229,24 @@ const getDashboardStats = async (userId) => {
   activities.sort((a, b) => new Date(b.date) - new Date(a.date));
   const recentActivity = activities.slice(0, 6);
 
+  // 10. Admin Analytics (if admin)
+  let adminStats = null;
+  if (user.role === "ADMIN") {
+    const totalUsers = await prisma.user.count();
+    const totalTeams = await prisma.team.count();
+    const totalProblems = await prisma.problem.count();
+    const activeUsersCount = await prisma.submission.groupBy({
+      by: ["userId"],
+    });
+
+    adminStats = {
+      totalUsers,
+      totalTeams,
+      totalProblems,
+      activeUsers: activeUsersCount.length,
+    };
+  }
+
   return {
     profileCompletion,
     skillsCount,
@@ -180,6 +259,8 @@ const getDashboardStats = async (userId) => {
     teamsJoinedCount,
     unreadMessagesCount,
     recentActivity,
+    codingSummary,
+    adminStats,
   };
 };
 

@@ -119,7 +119,30 @@ function MsgBubble({ msg, isOwn, showName, partnerReadAt }) {
       <div
         className={`tg-msg__bubble${msg.isDeleted ? " tg-msg__bubble--deleted" : ""}`}
       >
-        {msg.isDeleted ? "🚫 This message was deleted" : msg.text}
+        {msg.isDeleted ? (
+          "🚫 This message was deleted"
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {msg.fileUrl && msg.fileType === "IMAGE" && (
+              <img
+                src={msg.fileUrl}
+                alt="attachment"
+                style={{ maxWidth: "100%", maxHeight: "240px", borderRadius: "8px", objectFit: "cover", cursor: "pointer" }}
+                onClick={() => window.open(msg.fileUrl, "_blank")}
+              />
+            )}
+            {msg.fileUrl && msg.fileType === "FILE" && (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.08)", padding: "8px 12px", borderRadius: "8px" }}>
+                <span style={{ fontSize: "20px" }}>📁</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: "bold" }}>Attachment File</span>
+                  <a href={msg.fileUrl} download style={{ fontSize: "11px", color: "var(--primary)", textDecoration: "underline" }}>Download File</a>
+                </div>
+              </div>
+            )}
+            {msg.text && msg.text !== "Sent an attachment" && <span>{msg.text}</span>}
+          </div>
+        )}
       </div>
       <div className="tg-msg__meta">
         <span>{fmtTime(msg.createdAt)}</span>
@@ -145,6 +168,9 @@ export default function Chat() {
   const [selectedConv, setSelectedConv] = useState(null);
   const [messages, setMessages] = useState([]);
   const [search, setSearch] = useState("");
+  
+  // Search query for messages inside current conversation
+  const [msgQuery, setMsgQuery] = useState("");
 
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
@@ -155,11 +181,15 @@ export default function Chat() {
   const [partnerReadAt, setPartnerReadAt] = useState(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
+  // Emoji picker visibility state
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
   const selectedConvRef = useRef(null);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const typingTimerRef = useRef(null);
   const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => { selectedConvRef.current = selectedConv; }, [selectedConv]);
 
@@ -383,6 +413,59 @@ export default function Chat() {
     }
   };
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedConv) return;
+
+    const fileType = file.type.startsWith("image/") ? "IMAGE" : "FILE";
+
+    // Read as Base64 Data URL
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Url = reader.result;
+      setSending(true);
+      
+      const tempId = `_opt_${Date.now()}`;
+      const optimistic = {
+        id: tempId,
+        _optimistic: true,
+        conversationId: selectedConv.id,
+        senderId: user.id,
+        text: "Sent an attachment",
+        fileUrl: base64Url,
+        fileType,
+        createdAt: new Date().toISOString(),
+        sender: { id: user.id, name: user.name },
+        isDeleted: false,
+      };
+      setMessages((prev) => [...prev, optimistic]);
+
+      try {
+        const msg = await apiSendMessage(selectedConv.id, "", base64Url, fileType);
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? msg : m)));
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === selectedConv.id ? { ...c, messages: [msg] } : c
+          )
+        );
+      } catch (err) {
+        console.error("[Chat] send attachment failed:", err);
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      } finally {
+        setSending(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSelectEmoji = (emoji) => {
+    setText((prev) => prev + emoji);
+    setEmojiOpen(false);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
   const handleTextChange = (e) => {
     setText(e.target.value);
     // Auto-grow textarea
@@ -424,6 +507,10 @@ export default function Chat() {
   const partner = selectedConv?.participants?.find(
     (p) => p.userId !== user.id
   )?.user;
+
+  const filteredMessages = msgQuery.trim()
+    ? messages.filter((m) => m.text?.toLowerCase().includes(msgQuery.toLowerCase()))
+    : messages;
 
   // ── Render ─────────────────────────────────────────────────────
 
@@ -533,30 +620,50 @@ export default function Chat() {
         ) : (
           <>
             {/* Header */}
-            <div className="tg-header">
-              <Avatar
-                name={partner?.name || "?"}
-                online={isUserOnline(partner?.id)}
-              />
-              <div className="tg-header__info">
-                <div className="tg-header__name">{partner?.name || "Unknown"}</div>
-                <div
-                  className={`tg-header__status${
-                    isPartnerTyping
-                      ? " tg-header__status--typing"
+            <div className="tg-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <Avatar
+                  name={partner?.name || "?"}
+                  online={isUserOnline(partner?.id)}
+                />
+                <div className="tg-header__info">
+                  <div className="tg-header__name">{partner?.name || "Unknown"}</div>
+                  <div
+                    className={`tg-header__status${
+                      isPartnerTyping
+                        ? " tg-header__status--typing"
+                        : isUserOnline(partner?.id)
+                        ? " tg-header__status--online"
+                        : ""
+                    }`}
+                  >
+                    {isPartnerTyping
+                      ? "typing…"
                       : isUserOnline(partner?.id)
-                      ? " tg-header__status--online"
-                      : ""
-                  }`}
-                >
-                  {isPartnerTyping
-                    ? "typing…"
-                    : isUserOnline(partner?.id)
-                    ? "online"
-                    : "last seen recently"}
+                      ? "online"
+                      : "last seen recently"}
+                  </div>
                 </div>
               </div>
-              <div className="tg-header__actions">
+
+              {/* Message Search */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <input
+                  type="text"
+                  placeholder="🔍 Search messages..."
+                  value={msgQuery}
+                  onChange={(e) => setMsgQuery(e.target.value)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "15px",
+                    border: "1px solid var(--border)",
+                    background: "var(--background)",
+                    color: "var(--text-primary)",
+                    fontSize: "12px",
+                    outline: "none",
+                    width: "160px"
+                  }}
+                />
                 <span className={`tg-conn-badge${connected ? " tg-conn-badge--on" : " tg-conn-badge--off"}`}>
                   {connected ? "● Connected" : "● Reconnecting"}
                 </span>
@@ -583,16 +690,16 @@ export default function Chat() {
                     }}
                   />
                 ))
-              ) : messages.length === 0 ? (
+              ) : filteredMessages.length === 0 ? (
                 <div className="tg-messages__empty">
-                  <div style={{ fontSize: 36 }}>👋</div>
-                  <div>Say hello to {partner?.name}!</div>
+                  <div style={{ fontSize: 36 }}>💬</div>
+                  <div>No matching messages found.</div>
                 </div>
               ) : (
                 <>
-                  {messages.map((msg, idx) => {
+                  {filteredMessages.map((msg, idx) => {
                     const isOwn = msg.senderId === user.id;
-                    const prev = messages[idx - 1];
+                    const prev = filteredMessages[idx - 1];
                     const showDate = !prev || !sameDay(prev.createdAt, msg.createdAt);
                     const showName =
                       !isOwn &&
@@ -638,22 +745,77 @@ export default function Chat() {
             </div>
 
             {/* Input bar */}
-            <div className="tg-input-bar">
-              <div className="tg-input-bar__area">
+            <div className="tg-input-bar" style={{ display: "flex", gap: "10px", alignItems: "center", position: "relative" }}>
+              {/* File Attachment Hidden Input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
+              <button
+                className="tg-send-btn"
+                style={{ background: "transparent", color: "var(--text-secondary)", minWidth: "40px" }}
+                onClick={() => fileInputRef.current?.click()}
+                title="Attach file or image"
+              >
+                📎
+              </button>
+
+              <div className="tg-input-bar__area" style={{ flex: 1 }}>
                 <textarea
                   ref={textareaRef}
                   className="tg-input-bar__textarea"
-                  placeholder="Write a message… (Enter to send, Shift+Enter for new line)"
+                  placeholder="Write a message… (Enter to send)"
                   rows={1}
                   value={text}
                   onChange={handleTextChange}
                   onKeyDown={handleKeyDown}
                 />
               </div>
+
+              {/* Emoji Trigger */}
+              <div style={{ position: "relative" }}>
+                <button
+                  className="tg-send-btn"
+                  style={{ background: "transparent", minWidth: "40px", fontSize: "16px" }}
+                  onClick={() => setEmojiOpen(!emojiOpen)}
+                  title="Insert emoji"
+                >
+                  😊
+                </button>
+                {emojiOpen && (
+                  <div style={{
+                    position: "absolute",
+                    bottom: "50px",
+                    right: "0",
+                    background: "var(--surface)",
+                    border: "1.5px solid var(--border)",
+                    padding: "8px",
+                    borderRadius: "12px",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(5, 1fr)",
+                    gap: "6px",
+                    zIndex: 100,
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
+                  }}>
+                    {["💻", "🚀", "🔥", "👍", "😂", "❤️", "👀", "🎉", "🐛", "💡"].map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleSelectEmoji(emoji)}
+                        style={{ background: "transparent", border: "none", fontSize: "20px", cursor: "pointer", padding: "4px" }}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
                 className="tg-send-btn"
                 onClick={handleSend}
-                disabled={!text.trim() || sending}
+                disabled={(!text.trim()) && !sending}
                 aria-label="Send message"
               >
                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">

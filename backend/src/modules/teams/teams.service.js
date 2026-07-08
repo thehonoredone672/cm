@@ -26,6 +26,7 @@ const createTeam = async (userId, data) => {
       data: {
         teamId: team.id,
         userId,
+        role: "LEADER",
       },
     });
 
@@ -237,6 +238,72 @@ const updateTeam = async (leaderId, teamId, data) => {
   });
 };
 
+const updateMemberRole = async (leaderId, teamId, userId, newRole) => {
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+    include: { members: true },
+  });
+
+  if (!team) throw new Error("Team not found");
+
+  // Only leader or admin can promote/demote (except leader role itself cannot be modified without transfer)
+  const isLeader = team.leaderId === leaderId;
+  const callerMember = team.members.find((m) => m.userId === leaderId);
+  const isAdmin = callerMember && callerMember.role === "ADMIN";
+
+  if (!isLeader && !isAdmin) {
+    throw new Error("Only the leader or an admin can update roles");
+  }
+
+  const targetMember = team.members.find((m) => m.userId === userId);
+  if (!targetMember) throw new Error("User is not a member of this team");
+
+  if (userId === team.leaderId) {
+    throw new Error("Cannot change the role of the team leader");
+  }
+
+  return prisma.teamMember.update({
+    where: {
+      teamId_userId: { teamId, userId },
+    },
+    data: {
+      role: newRole,
+    },
+  });
+};
+
+const inviteToTeamByEmail = async (senderId, teamId, email) => {
+  const team = await prisma.team.findUnique({
+    where: { id: teamId },
+  });
+
+  if (!team) throw new Error("Team not found");
+
+  const targetUser = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!targetUser) {
+    throw new Error(`User with email "${email}" not found on CodeMatch.`);
+  }
+
+  // Trigger invite notifications
+  try {
+    const { createNotification } = require("../notifications/notifications.service");
+    await createNotification(
+      targetUser.id,
+      "TEAM_INVITE",
+      `Team Invite: ${team.name}`,
+      `You have been invited to join the team "${team.name}". Join code: ${team.joinCode}`,
+      `/teams`
+    );
+  } catch (err) {
+    console.error("Failed to trigger team invite notification", err);
+  }
+
+  return { success: true, message: "Invite sent successfully" };
+};
+
 module.exports = {
   createTeam,
   getTeamsForUser,
@@ -245,4 +312,6 @@ module.exports = {
   leaveTeam,
   removeMember,
   updateTeam,
+  updateMemberRole,
+  inviteToTeamByEmail,
 };

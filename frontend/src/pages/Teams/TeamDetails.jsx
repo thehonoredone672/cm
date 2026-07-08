@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTeamDetails, leaveTeam, removeMember, updateTeam } from "../../services/teamService";
+import { getTeamDetails, leaveTeam, removeMember, updateTeam, updateMemberRole, inviteToTeamByEmail } from "../../services/teamService";
 import { useAuth } from "../../context/AuthContext";
 import "./Teams.css";
 
@@ -19,6 +19,10 @@ export default function TeamDetails() {
   const [editDesc, setEditDesc] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Invite Form State
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   useEffect(() => {
     fetchTeamDetails();
@@ -99,6 +103,40 @@ export default function TeamDetails() {
       setErrorMessage(err.response?.data?.message || "Failed to update team.");
     } finally {
       setUpdateLoading(false);
+    }
+  };
+
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) return;
+    try {
+      setInviteLoading(true);
+      setErrorMessage("");
+      setSuccessMessage("");
+      await inviteToTeamByEmail(id, inviteEmail.trim());
+      setSuccessMessage(`Collaboration invite triggered to "${inviteEmail}"!`);
+      setInviteEmail("");
+      fetchTeamDetails();
+    } catch (err) {
+      setErrorMessage(err.response?.data?.message || "Failed to invite teammate.");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const handleRoleChange = async (userId, currentRole) => {
+    const newRole = currentRole === "ADMIN" ? "MEMBER" : "ADMIN";
+    const actionName = currentRole === "ADMIN" ? "demote" : "promote";
+    if (!window.confirm(`Are you sure you want to ${actionName} this member?`)) return;
+
+    try {
+      setErrorMessage("");
+      setSuccessMessage("");
+      await updateMemberRole(id, userId, newRole);
+      setSuccessMessage("Member role updated successfully.");
+      fetchTeamDetails();
+    } catch (err) {
+      setErrorMessage(err.response?.data?.message || "Failed to change member role.");
     }
   };
 
@@ -215,30 +253,68 @@ export default function TeamDetails() {
       </div>
 
       <div className="members-section">
-        <h2>Team Members ({team.members.length})</h2>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", marginBottom: "16px", gap: "12px" }}>
+          <h2>Team Members ({team.members.length})</h2>
+          
+          {/* Direct Invite Form */}
+          {isLeader && (
+            <form onSubmit={handleInvite} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <input
+                type="email"
+                placeholder="Invite member by email..."
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                required
+                style={{ padding: "8px 12px", border: "1.5px solid var(--border)", borderRadius: "6px", fontSize: "13px", background: "var(--background)", color: "var(--text-primary)" }}
+              />
+              <button className="btn-primary" type="submit" disabled={inviteLoading} style={{ padding: "8px 16px", fontSize: "13px" }}>
+                {inviteLoading ? "Inviting..." : "Invite"}
+              </button>
+            </form>
+          )}
+        </div>
+
         <div className="members-grid">
           {team.members.map((membership) => {
             const isMemberLeader = team.leaderId === membership.userId;
             const isSelf = membership.userId === user?.id;
+            const currentRole = membership.role || "MEMBER";
             return (
               <div key={membership.id} className="member-card">
                 <div className="member-info">
-                  <div className="member-name">
-                    {membership.user.name} {isSelf && "(You)"}
-                    {isMemberLeader && <span className="leader-tag">Leader</span>}
+                  <div className="member-name" style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                    <span>{membership.user.name} {isSelf && "(You)"}</span>
+                    {isMemberLeader ? (
+                      <span className="leader-tag" style={{ background: "var(--primary)", color: "#fff", padding: "1px 6px", borderRadius: "10px", fontSize: "10px" }}>Leader</span>
+                    ) : (
+                      <span style={{ background: currentRole === "ADMIN" ? "#f59e0b" : "var(--border)", color: currentRole === "ADMIN" ? "#fff" : "var(--text-secondary)", padding: "1px 6px", borderRadius: "10px", fontSize: "10px", fontWeight: "bold" }}>
+                        {currentRole}
+                      </span>
+                    )}
                   </div>
                   <div className="member-email">{membership.user.email}</div>
                 </div>
 
-                {isLeader && !isMemberLeader && (
-                  <button 
-                    className="btn-danger" 
-                    onClick={() => handleRemoveMember(membership.userId)}
-                    style={{ padding: "6px 12px", fontSize: "12px" }}
-                  >
-                    Remove
-                  </button>
-                )}
+                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                  {isLeader && !isMemberLeader && (
+                    <button
+                      className="btn-secondary"
+                      onClick={() => handleRoleChange(membership.userId, currentRole)}
+                      style={{ padding: "4px 8px", fontSize: "11px" }}
+                    >
+                      {currentRole === "ADMIN" ? "Demote" : "Promote"}
+                    </button>
+                  )}
+                  {isLeader && !isMemberLeader && (
+                    <button 
+                      className="btn-danger" 
+                      onClick={() => handleRemoveMember(membership.userId)}
+                      style={{ padding: "4px 8px", fontSize: "11px" }}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

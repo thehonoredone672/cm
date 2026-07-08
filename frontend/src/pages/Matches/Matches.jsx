@@ -12,6 +12,11 @@ export default function Matches() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Filters State
+  const [skillFilter, setSkillFilter] = useState("");
+  const [collegeFilter, setCollegeFilter] = useState("");
+  const [deptFilter, setDeptFilter] = useState("");
+
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
 
@@ -20,11 +25,16 @@ export default function Matches() {
   }, []);
 
   useEffect(() => {
-    const filtered = matches.filter((match) =>
-      match.name.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = matches.filter((match) => {
+      const matchName = match.name.toLowerCase().includes(search.toLowerCase());
+      const matchSkill = !skillFilter || (match.commonSkills || []).some(s => s.toLowerCase().includes(skillFilter.toLowerCase())) ||
+        (match.totalSkills && match.commonSkills); // fallback or matching on common
+      const matchCollege = !collegeFilter || (match.college || "").toLowerCase().includes(collegeFilter.toLowerCase());
+      const matchDept = !deptFilter || (match.department || "").toLowerCase().includes(deptFilter.toLowerCase());
+      return matchName && matchSkill && matchCollege && matchDept;
+    });
     setFilteredMatches(filtered);
-  }, [search, matches]);
+  }, [search, skillFilter, collegeFilter, deptFilter, matches]);
 
   async function loadMatches() {
     try {
@@ -70,28 +80,54 @@ export default function Matches() {
 
   return (
     <div className="matches-page">
-      <div className="matches-header">
+      <div className="matches-header" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         <h1>Recommended Matches</h1>
 
-        <div style={{ position: "relative" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", width: "100%" }}>
+          <div style={{ position: "relative" }}>
+            <input
+              type="text"
+              placeholder="Search by name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ paddingLeft: "40px", width: "100%" }}
+            />
+            <svg 
+              width="18" 
+              height="18" 
+              fill="none" 
+              stroke="var(--text-secondary)" 
+              strokeWidth="2" 
+              viewBox="0 0 24 24"
+              style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+
           <input
             type="text"
-            placeholder="Search students..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ paddingLeft: "40px" }}
+            placeholder="Filter by Skill..."
+            value={skillFilter}
+            onChange={(e) => setSkillFilter(e.target.value)}
+            style={{ width: "100%" }}
           />
-          <svg 
-            width="18" 
-            height="18" 
-            fill="none" 
-            stroke="var(--text-secondary)" 
-            strokeWidth="2" 
-            viewBox="0 0 24 24"
-            style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)" }}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+
+          <input
+            type="text"
+            placeholder="Filter by College..."
+            value={collegeFilter}
+            onChange={(e) => setCollegeFilter(e.target.value)}
+            style={{ width: "100%" }}
+          />
+
+          <input
+            type="text"
+            placeholder="Filter by Department..."
+            value={deptFilter}
+            onChange={(e) => setDeptFilter(e.target.value)}
+            style={{ width: "100%" }}
+          />
         </div>
       </div>
 

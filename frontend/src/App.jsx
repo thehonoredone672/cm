@@ -14,6 +14,7 @@ import TeamsList from "./pages/Teams/TeamsList";
 import TeamDetails from "./pages/Teams/TeamDetails";
 import ProblemList from "./pages/Problems/ProblemList";
 import ProblemDetails from "./pages/Problems/ProblemDetails";
+import AdminProblems from "./pages/Problems/AdminProblems";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -153,6 +154,17 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <ProblemDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/problems/admin"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AdminProblems />
               </MainLayout>
             </ProtectedRoute>
           }
