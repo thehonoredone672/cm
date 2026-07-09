@@ -1,8 +1,8 @@
 :root {
-  /* ========= COLORS (Premium HSL Palette) ========= */
-  --primary: hsl(221.2, 83.2%, 53.3%);
-  --primary-dark: hsl(222.2, 47.4%, 11.2%);
-  --primary-glow: hsla(221.2, 83.2%, 53.3%, 0.15);
+  /* ========= COLORS (Premium Monochrome Palette) ========= */
+  --primary: hsl(0, 0%, 10%);          /* Sleek black */
+  --primary-dark: hsl(0, 0%, 0%);      /* Pure black */
+  --primary-glow: rgba(0, 0, 0, 0.08); /* Minimal black glow */
 
   --success: hsl(142.1, 76.2%, 36.3%);
   --success-glow: hsla(142.1, 76.2%, 36.3%, 0.15);
@@ -43,36 +43,44 @@
 
 [data-theme="dark"] {
   /* Dark Theme Values (LeetCode & Apple Dark Inspired) */
-  --background: hsl(240, 10%, 3.9%);
-  --surface: hsl(240, 10%, 6%);
-  --surface-glass: rgba(15, 15, 20, 0.7);
-  --border: hsl(240, 3.7%, 15.9%);
-  --border-light: hsl(240, 3.7%, 10%);
+  --primary: hsl(0, 0%, 100%);          /* Crisp white */
+  --primary-dark: hsl(0, 0%, 90%);      /* Bright gray */
+  --primary-glow: rgba(255, 255, 255, 0.15); /* Sleek white glow */
+
+  --background: hsl(0, 0%, 4%);        /* Deep black background */
+  --surface: hsl(0, 0%, 8%);           /* Dark carbon surface */
+  --surface-glass: rgba(10, 10, 10, 0.7);
+  --border: hsl(0, 0%, 15%);            /* Minimal charcoal border */
+  --border-light: hsl(0, 0%, 10%);
 
   --text-primary: hsl(0, 0%, 98%);
-  --text-secondary: hsl(240, 5%, 64.9%);
-  --text-muted: hsl(240, 5%, 35%);
+  --text-secondary: hsl(0, 0%, 70%);
+  --text-muted: hsl(0, 0%, 45%);
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.8);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.8), 0 2px 6px -1px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.9), 0 10px 10px -5px rgba(0, 0, 0, 0.8);
 }
 
 /* System override: default to dark for high-tech premium feel */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --background: hsl(240, 10%, 3.9%);
-    --surface: hsl(240, 10%, 6%);
-    --surface-glass: rgba(15, 15, 20, 0.7);
-    --border: hsl(240, 3.7%, 15.9%);
-    --border-light: hsl(240, 3.7%, 10%);
+    --primary: hsl(0, 0%, 100%);
+    --primary-dark: hsl(0, 0%, 90%);
+    --primary-glow: rgba(255, 255, 255, 0.15);
+
+    --background: hsl(0, 0%, 4%);
+    --surface: hsl(0, 0%, 8%);
+    --surface-glass: rgba(10, 10, 10, 0.7);
+    --border: hsl(0, 0%, 15%);
+    --border-light: hsl(0, 0%, 10%);
 
     --text-primary: hsl(0, 0%, 98%);
-    --text-secondary: hsl(240, 5%, 64.9%);
-    --text-muted: hsl(240, 5%, 35%);
+    --text-secondary: hsl(0, 0%, 70%);
+    --text-muted: hsl(0, 0%, 45%);
 
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.8);
+    --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.8), 0 2px 6px -1px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.9), 0 10px 10px -5px rgba(0, 0, 0, 0.8);
   }
 }

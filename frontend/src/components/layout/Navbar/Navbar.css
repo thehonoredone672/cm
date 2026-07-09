@@ -17,7 +17,7 @@
 .navbar__left h2 {
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--primary), hsl(221.2, 83.2%, 65%));
+  background: linear-gradient(135deg, var(--primary), var(--text-secondary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   letter-spacing: -0.5px;

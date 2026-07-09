@@ -89,7 +89,7 @@
 }
 
 .score.good {
-  background: linear-gradient(135deg, var(--primary), hsl(221.2, 83.2%, 63%));
+  background: linear-gradient(135deg, var(--primary), var(--text-secondary));
   box-shadow: 0 0 12px var(--primary-glow);
 }
 

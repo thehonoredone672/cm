@@ -4,6 +4,25 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("Seeding competitive coding problems...");
 
+  const bcrypt = require("bcryptjs");
+  const adminPassword = await bcrypt.hash("adminpassword", 10);
+  
+  await prisma.user.upsert({
+    where: { email: "admin@codematch.com" },
+    update: {
+      name: "System Admin",
+      password: adminPassword,
+      role: "ADMIN",
+    },
+    create: {
+      name: "System Admin",
+      email: "admin@codematch.com",
+      password: adminPassword,
+      role: "ADMIN",
+    },
+  });
+  console.log("Admin account (admin@codematch.com / adminpassword) seeded successfully.");
+
   // Delete existing ones
   await prisma.submission.deleteMany({});
   await prisma.testCase.deleteMany({});
