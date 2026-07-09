@@ -69,6 +69,18 @@ const protect =
     }
   };
 
+const adminOnly = (req, res, next) => {
+  if (req.user && req.user.role === "ADMIN") {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: "Forbidden: Admin privileges required",
+    });
+  }
+};
+
 module.exports = {
   protect,
+  adminOnly,
 };

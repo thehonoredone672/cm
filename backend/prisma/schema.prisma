@@ -75,6 +75,13 @@ model User {
   notifications   Notification[]
   projects        Project[]
 
+  isBlocked      Boolean   @default(false)
+  streak         Int       @default(0)
+  githubId       String?
+  leetcodeProfile String?
+  filedReports   Report[]  @relation("ReporterRelation")
+  badges         UserBadge[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -313,6 +320,48 @@ model Project {
   featured    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  reporterId  String
+  reporter    User     @relation("ReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType  String   // USER, TEAM, MESSAGE
+  targetId    String
+  reason      String
+  status      String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
+  createdAt   DateTime @default(now())
+}
+
+model Announcement {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model SystemConfig {
+  key   String @id
+  value String
+}
+
+model Hackathon {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        DateTime
+  link        String
+  createdAt   DateTime @default(now())
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeName String
+  earnedAt  DateTime @default(now())
+  @@unique([userId, badgeName])
 }
 
 
