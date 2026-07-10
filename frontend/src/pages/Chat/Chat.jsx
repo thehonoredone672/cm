@@ -55,14 +55,18 @@ const sameDay = (a, b) => {
 
 // ─── Avatar Component ─────────────────────────────────────────────────────────
 
-function Avatar({ name = "?", size = "md", online = false }) {
+function Avatar({ name = "?", size = "md", online = false, isGroup = false }) {
   return (
     <div
       className={`tg-avatar${size === "sm" ? " tg-avatar--sm" : ""}`}
-      style={{ background: avatarColor(name) }}
+      style={{
+        background: isGroup ? "var(--primary)" : avatarColor(name),
+        color: isGroup ? "var(--surface)" : "#fff",
+        borderRadius: isGroup ? "30%" : "50%",
+      }}
     >
-      {initials(name)}
-      {online && <span className="tg-avatar__dot" />}
+      {isGroup ? "👥" : initials(name)}
+      {online && !isGroup && <span className="tg-avatar__dot" />}
     </div>
   );
 }
@@ -70,8 +74,11 @@ function Avatar({ name = "?", size = "md", online = false }) {
 // ─── Sidebar Contact Row ──────────────────────────────────────────────────────
 
 function ContactRow({ conv, currentUserId, selected, isOnline, onClick }) {
-  const partner = conv.participants?.find((p) => p.userId !== currentUserId)?.user;
-  if (!partner) return null;
+  const isGroup = !!conv.teamId;
+  const partner = isGroup ? null : conv.participants?.find((p) => p.userId !== currentUserId)?.user;
+  
+  if (!isGroup && !partner) return null;
+
   const lastMsg = conv.messages?.[0];
   const preview = lastMsg
     ? (lastMsg.isDeleted
@@ -79,15 +86,17 @@ function ContactRow({ conv, currentUserId, selected, isOnline, onClick }) {
         : (lastMsg.senderId === currentUserId ? "You: " : "") + lastMsg.text)
     : "No messages yet";
 
+  const chatName = isGroup ? (conv.name || "Team Group Chat") : partner.name;
+
   return (
     <button
       className={`tg-contact${selected ? " tg-contact--active" : ""}`}
       onClick={onClick}
     >
-      <Avatar name={partner.name} online={isOnline(partner.id)} />
+      <Avatar name={chatName} online={isGroup ? false : isOnline(partner.id)} isGroup={isGroup} />
       <div className="tg-contact__body">
         <div className="tg-contact__row1">
-          <span className="tg-contact__name">{partner.name}</span>
+          <span className="tg-contact__name">{chatName}</span>
           <span className="tg-contact__time">
             {lastMsg ? fmtSidebarTime(lastMsg.createdAt) : ""}
           </span>
@@ -504,9 +513,11 @@ export default function Chat() {
       )
   );
 
-  const partner = selectedConv?.participants?.find(
-    (p) => p.userId !== user.id
-  )?.user;
+  const isGroup = selectedConv && !!selectedConv.teamId;
+  const partner = isGroup
+    ? null
+    : selectedConv?.participants?.find((p) => p.userId !== user.id)?.user;
+  const chatTitle = isGroup ? (selectedConv.name || "Team Group Chat") : (partner?.name || "Unknown");
 
   const filteredMessages = msgQuery.trim()
     ? messages.filter((m) => m.text?.toLowerCase().includes(msgQuery.toLowerCase()))
@@ -623,25 +634,28 @@ export default function Chat() {
             <div className="tg-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <Avatar
-                  name={partner?.name || "?"}
-                  online={isUserOnline(partner?.id)}
+                  name={chatTitle}
+                  online={isGroup ? false : isUserOnline(partner?.id)}
+                  isGroup={isGroup}
                 />
                 <div className="tg-header__info">
-                  <div className="tg-header__name">{partner?.name || "Unknown"}</div>
+                  <div className="tg-header__name">{chatTitle}</div>
                   <div
                     className={`tg-header__status${
-                      isPartnerTyping
+                      !isGroup && isPartnerTyping
                         ? " tg-header__status--typing"
-                        : isUserOnline(partner?.id)
+                        : !isGroup && isUserOnline(partner?.id)
                         ? " tg-header__status--online"
                         : ""
                     }`}
                   >
-                    {isPartnerTyping
-                      ? "typing…"
-                      : isUserOnline(partner?.id)
-                      ? "online"
-                      : "last seen recently"}
+                    {isGroup
+                      ? `${selectedConv.participants?.length || 0} members`
+                      : (isPartnerTyping
+                          ? "typing…"
+                          : isUserOnline(partner?.id)
+                          ? "online"
+                          : "last seen recently")}
                   </div>
                 </div>
               </div>

@@ -159,7 +159,9 @@ model Application {
 }
 
 model Conversation {
-  id String @id @default(uuid())
+  id     String  @id @default(uuid())
+  teamId String? @unique
+  name   String?
 
   participants ConversationParticipant[]
   messages     Message[]

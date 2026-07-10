@@ -1,4 +1,4 @@
-const { getDashboardStats } = require("./dashboard.service");
+const { getDashboardStats, getSolvesLeaderboard } = require("./dashboard.service");
 
 const getDashboardStatsHandler = async (req, res, next) => {
   try {
@@ -12,6 +12,19 @@ const getDashboardStatsHandler = async (req, res, next) => {
   }
 };
 
+const getLeaderboardHandler = async (req, res, next) => {
+  try {
+    const list = await getSolvesLeaderboard();
+    res.status(200).json({
+      success: true,
+      data: list,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getDashboardStatsHandler,
+  getLeaderboardHandler,
 };

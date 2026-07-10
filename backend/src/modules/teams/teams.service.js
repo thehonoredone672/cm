@@ -30,6 +30,16 @@ const createTeam = async (userId, data) => {
       },
     });
 
+    await tx.conversation.create({
+      data: {
+        teamId: team.id,
+        name: team.name,
+        participants: {
+          create: [{ userId }],
+        },
+      },
+    });
+
     return team;
   });
 };
@@ -110,6 +120,7 @@ const getTeamById = async (id, userId) => {
 const joinTeam = async (userId, joinCode) => {
   const team = await prisma.team.findUnique({
     where: { joinCode },
+    include: { members: true },
   });
 
   if (!team) {
@@ -129,14 +140,49 @@ const joinTeam = async (userId, joinCode) => {
     throw new Error("You are already a member of this team");
   }
 
-  return prisma.teamMember.create({
-    data: {
-      teamId: team.id,
-      userId,
-    },
-    include: {
-      team: true,
-    },
+  return prisma.$transaction(async (tx) => {
+    const member = await tx.teamMember.create({
+      data: {
+        teamId: team.id,
+        userId,
+      },
+      include: {
+        team: true,
+      },
+    });
+
+    let conv = await tx.conversation.findUnique({
+      where: { teamId: team.id },
+    });
+
+    if (!conv) {
+      const allUserIds = [...team.members.map((m) => m.userId), userId];
+      await tx.conversation.create({
+        data: {
+          teamId: team.id,
+          name: team.name,
+          participants: {
+            create: allUserIds.map((uId) => ({ userId: uId })),
+          },
+        },
+      });
+    } else {
+      await tx.conversationParticipant.upsert({
+        where: {
+          conversationId_userId: {
+            conversationId: conv.id,
+            userId,
+          },
+        },
+        update: {},
+        create: {
+          conversationId: conv.id,
+          userId,
+        },
+      });
+    }
+
+    return member;
   });
 };
 
@@ -166,13 +212,30 @@ const leaveTeam = async (userId, teamId) => {
     throw new Error("You are not a member of this team");
   }
 
-  return prisma.teamMember.delete({
-    where: {
-      teamId_userId: {
-        teamId,
-        userId,
+  return prisma.$transaction(async (tx) => {
+    const deleted = await tx.teamMember.delete({
+      where: {
+        teamId_userId: {
+          teamId,
+          userId,
+        },
       },
-    },
+    });
+
+    const conv = await tx.conversation.findUnique({
+      where: { teamId },
+    });
+
+    if (conv) {
+      await tx.conversationParticipant.deleteMany({
+        where: {
+          conversationId: conv.id,
+          userId,
+        },
+      });
+    }
+
+    return deleted;
   });
 };
 
@@ -206,13 +269,30 @@ const removeMember = async (leaderId, teamId, userId) => {
     throw new Error("User is not a member of this team");
   }
 
-  return prisma.teamMember.delete({
-    where: {
-      teamId_userId: {
-        teamId,
-        userId,
+  return prisma.$transaction(async (tx) => {
+    const deleted = await tx.teamMember.delete({
+      where: {
+        teamId_userId: {
+          teamId,
+          userId,
+        },
       },
-    },
+    });
+
+    const conv = await tx.conversation.findUnique({
+      where: { teamId },
+    });
+
+    if (conv) {
+      await tx.conversationParticipant.deleteMany({
+        where: {
+          conversationId: conv.id,
+          userId,
+        },
+      });
+    }
+
+    return deleted;
   });
 };
 

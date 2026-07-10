@@ -195,6 +195,8 @@ app.use(
 
 const reportRoutes = require("./modules/reports/reports.routes");
 
+const hackathonRoutes = require("./modules/hackathons/hackathons.routes");
+
 app.use(
   "/api/projects",
   projectRoutes
@@ -208,6 +210,11 @@ app.use(
 app.use(
   "/api/reports",
   reportRoutes
+);
+
+app.use(
+  "/api/hackathons",
+  hackathonRoutes
 );
 
 app.use(

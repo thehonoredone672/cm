@@ -48,12 +48,12 @@
 }
 
 .add-btn {
-  background: #2563eb;
-  color: white;
+  background: var(--primary);
+  color: var(--surface);
 }
 
 .add-btn:hover {
-  background: #1d4ed8;
+  background: var(--primary-dark);
 }
 
 .added-btn {

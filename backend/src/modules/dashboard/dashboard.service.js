@@ -264,6 +264,34 @@ const getDashboardStats = async (userId) => {
   };
 };
 
+const getSolvesLeaderboard = async () => {
+  const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      role: true,
+      submissions: {
+        where: { status: "ACCEPTED" },
+        select: { problemId: true }
+      }
+    }
+  });
+
+  const leaders = users.map(u => {
+    const uniqueSolves = new Set(u.submissions.map(s => s.problemId));
+    return {
+      id: u.id,
+      name: u.name,
+      role: u.role,
+      solves: uniqueSolves.size
+    };
+  });
+
+  leaders.sort((a, b) => b.solves - a.solves);
+  return leaders.slice(0, 10);
+};
+
 module.exports = {
   getDashboardStats,
+  getSolvesLeaderboard,
 };

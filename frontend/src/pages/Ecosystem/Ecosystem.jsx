@@ -1,32 +1,92 @@
 import { useEffect, useState } from "react";
 import { getProjects } from "../../services/projectService";
 import { getDashboardStats } from "../../services/dashboardService";
+import api from "../../api/axios";
 import "./Ecosystem.css";
 
 export default function Ecosystem() {
   const [activeTab, setActiveTab] = useState("hackathons");
 
-  // Mock data
-  const hackathons = [
-    { id: "h1", title: "CodeMatch Global Hackathon 2026", desc: "Build developer matchmaking utilities and collaborate in real-time.", date: "July 24-26, 2026", prize: "$10,000", link: "https://hackathon.codematch.com" },
-    { id: "h2", title: "Web3 Developer Sprint", desc: "Create decentralised file transfer layers and messaging portals.", date: "August 12-14, 2026", prize: "5 ETH", link: "https://web3devs.org" },
-    { id: "h3", title: "Generative AI Hackathon", desc: "Embed custom LLM agents to provide feedback on resume profiles.", date: "September 05-07, 2026", prize: "$25,000", link: "https://aihack.devpost.com" }
-  ];
+  // Dynamic DB data
+  const [hackathons, setHackathons] = useState([]);
+  const [loadingHackathons, setLoadingHackathons] = useState(true);
+
+  const [leaders, setLeaders] = useState([]);
+  const [loadingLeaders, setLoadingLeaders] = useState(true);
+
+  const [admins, setAdmins] = useState([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(true);
+
+  const [dbStats, setDbStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    fetchHackathons();
+    fetchLeaderboard();
+    fetchAdmins();
+    fetchStats();
+  }, []);
+
+  const fetchHackathons = async () => {
+    try {
+      setLoadingHackathons(true);
+      const res = await api.get("/hackathons");
+      setHackathons(res.data.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHackathons(false);
+    }
+  };
+
+  const fetchLeaderboard = async () => {
+    try {
+      setLoadingLeaders(true);
+      const res = await api.get("/dashboard/leaderboard");
+      setLeaders(res.data.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingLeaders(false);
+    }
+  };
+
+  const fetchAdmins = async () => {
+    try {
+      setLoadingAdmins(true);
+      const res = await api.get("/users/admins");
+      setAdmins(res.data.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      setLoadingStats(true);
+      const stats = await getDashboardStats();
+      setDbStats(stats);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  // Badges (dynamically calculated based on solves)
+  const solvedCount = dbStats?.codingSummary?.solvedCount || 0;
+  const easySolved = dbStats?.codingSummary?.easySolved || 0;
+  const mediumSolved = dbStats?.codingSummary?.mediumSolved || 0;
+  const hardSolved = dbStats?.codingSummary?.hardSolved || 0;
 
   const badges = [
-    { name: "Code Warrior", desc: "Solve 5 Easy Problems", icon: "⚔️", earned: true },
-    { name: "Algorithmic Expert", desc: "Solve 10 Medium Problems", icon: "🧠", earned: true },
-    { name: "Master Ninja", desc: "Solve 5 Hard Problems", icon: "🥷", earned: false },
-    { name: "Streak Hero", desc: "Earn a 7-day coding streak", icon: "🔥", earned: true },
-    { name: "Collaborator", desc: "Join or build a team", icon: "🤝", earned: true }
-  ];
-
-  const leaders = [
-    { rank: 1, name: "Alexander Ivanov", solves: 45, language: "C++", score: 98 },
-    { rank: 2, name: "Elena Rostova", solves: 38, language: "Python", score: 92 },
-    { rank: 3, name: "System Admin", solves: 32, language: "Javascript", score: 88 },
-    { rank: 4, name: "Dharsan Kumar", solves: 28, language: "Python", score: 85 },
-    { rank: 5, name: "Nitin Sharma", solves: 22, language: "Go", score: 79 }
+    { name: "Code Warrior", desc: "Solve 1 Easy Problem", icon: "⚔️", earned: easySolved >= 1 },
+    { name: "Algorithmic Expert", desc: "Solve 1 Medium Problem", icon: "🧠", earned: mediumSolved >= 1 },
+    { name: "Master Ninja", desc: "Solve 1 Hard Problem", icon: "🥷", earned: hardSolved >= 1 },
+    { name: "Streak Hero", desc: "Solve at least 1 problem total", icon: "🔥", earned: solvedCount >= 1 },
+    { name: "Collaborator", desc: "Join or build a team", icon: "🤝", earned: (dbStats?.teamsJoinedCount || 0) >= 1 }
   ];
 
   // AI assistant state
@@ -109,25 +169,55 @@ export default function Ecosystem() {
 
       {/* Tab Contents */}
       <div className="ecosystem-content">
-
-        {/* 1. Hackathons Tab */}
         {activeTab === "hackathons" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <h2 style={{ fontSize: "18px", borderBottom: "1.5px solid var(--border)", paddingBottom: "10px" }}>Upcoming Hackathons</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
-              {hackathons.map(h => (
-                <div key={h.id} style={{ background: "var(--surface)", border: "1.5px solid var(--border)", padding: "20px", borderRadius: "12px", display: "flex", flexDirection: "column", justifyBetween: "space-between" }}>
-                  <div>
-                    <span style={{ background: "var(--primary-glow)", color: "var(--primary)", fontSize: "11px", fontWeight: "bold", padding: "4px 10px", borderRadius: "12px" }}>Active Hackathon</span>
-                    <h3 style={{ margin: "12px 0 6px 0", fontSize: "16px" }}>{h.title}</h3>
-                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px", lineHeight: 1.4 }}>{h.desc}</p>
+            
+            {loadingHackathons ? (
+              <div className="skeleton-loader" style={{ height: "120px" }} />
+            ) : hackathons.length === 0 ? (
+              <div style={{ padding: "20px", color: "var(--text-secondary)", fontSize: "13px" }}>No active hackathons found. Check back later!</div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "20px" }}>
+                {hackathons.map(h => (
+                  <div key={h.id} style={{ background: "var(--surface)", border: "1.5px solid var(--border)", padding: "20px", borderRadius: "12px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                    <div>
+                      <span style={{ background: "var(--primary-glow)", color: "var(--primary)", fontSize: "11px", fontWeight: "bold", padding: "4px 10px", borderRadius: "12px" }}>Active Hackathon</span>
+                      <h3 style={{ margin: "12px 0 6px 0", fontSize: "16px" }}>{h.title}</h3>
+                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px", lineHeight: 1.4 }}>{h.description}</p>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "12px", marginTop: "auto" }}>
+                      <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>📅 {new Date(h.date).toLocaleDateString()}</span>
+                      <a href={h.link} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "6px 12px", fontSize: "12px" }}>Register</a>
+                    </div>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "12px", marginTop: "auto" }}>
-                    <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>📅 {h.date}</span>
-                    <a href={h.link} target="_blank" rel="noreferrer" className="btn-primary" style={{ padding: "6px 12px", fontSize: "12px" }}>Register</a>
-                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Administrators list */}
+            <div style={{ marginTop: "32px", background: "var(--surface)", border: "1.5px solid var(--border)", padding: "24px", borderRadius: "12px" }}>
+              <h3 style={{ fontSize: "16px", marginBottom: "8px" }}>🛡️ Platform Support & Administrators</h3>
+              <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px" }}>
+                Contact administrators below to request system upgrades, report guidelines violations, or get match support.
+              </p>
+              {loadingAdmins ? (
+                <div className="skeleton-loader" style={{ height: "40px" }} />
+              ) : admins.length === 0 ? (
+                <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>No administrator accounts seeded.</div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px" }}>
+                  {admins.map(adm => (
+                    <div key={adm.id} style={{ padding: "14px", background: "var(--background)", border: "1px solid var(--border)", borderRadius: "8px", fontSize: "13px" }}>
+                      <strong style={{ display: "block", marginBottom: "4px" }}>{adm.name}</strong>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "2px", color: "var(--text-secondary)", fontSize: "12px" }}>
+                        <span>Email: {adm.email}</span>
+                        <span>ID: <code style={{ fontSize: "10px", background: "var(--border)", padding: "1px 4px", borderRadius: "3px" }}>{adm.id}</code></span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           </div>
         )}
@@ -138,26 +228,32 @@ export default function Ecosystem() {
             {/* Ranks Leaderboard */}
             <div style={{ background: "var(--surface)", border: "1.5px solid var(--border)", padding: "24px", borderRadius: "12px" }}>
               <h2 style={{ fontSize: "18px", marginBottom: "16px" }}>🔥 Global Solves Leaderboard</h2>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1.5px solid var(--border)", color: "var(--text-secondary)", textAlign: "left" }}>
-                    <th style={{ padding: "8px" }}>Rank</th>
-                    <th style={{ padding: "8px" }}>Developer</th>
-                    <th style={{ padding: "8px" }}>Solves</th>
-                    <th style={{ padding: "8px" }}>Stack</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaders.map(l => (
-                    <tr key={l.rank} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "10px 8px", fontWeight: "bold", color: l.rank === 1 ? "#f59e0b" : "var(--text-primary)" }}>#{l.rank}</td>
-                      <td style={{ padding: "10px 8px" }}>{l.name}</td>
-                      <td style={{ padding: "10px 8px", fontWeight: "bold" }}>{l.solves}</td>
-                      <td style={{ padding: "10px 8px" }}><span style={{ background: "var(--border)", padding: "2px 6px", borderRadius: "4px", fontSize: "11px" }}>{l.language}</span></td>
+              {loadingLeaders ? (
+                <div className="skeleton-loader" style={{ height: "120px" }} />
+              ) : leaders.length === 0 ? (
+                <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>No leaderboard data found.</div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1.5px solid var(--border)", color: "var(--text-secondary)", textAlign: "left" }}>
+                      <th style={{ padding: "8px" }}>Rank</th>
+                      <th style={{ padding: "8px" }}>Developer</th>
+                      <th style={{ padding: "8px" }}>Solves</th>
+                      <th style={{ padding: "8px" }}>Role</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {leaders.map((l, idx) => (
+                      <tr key={l.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={{ padding: "10px 8px", fontWeight: "bold", color: idx === 0 ? "#f59e0b" : "var(--text-primary)" }}>#{idx + 1}</td>
+                        <td style={{ padding: "10px 8px" }}>{l.name}</td>
+                        <td style={{ padding: "10px 8px", fontWeight: "bold" }}>{l.solves} solves</td>
+                        <td style={{ padding: "10px 8px" }}><span style={{ background: "var(--border)", padding: "2px 6px", borderRadius: "4px", fontSize: "11px" }}>{l.role}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             {/* Badges and streaks */}

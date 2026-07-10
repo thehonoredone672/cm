@@ -27,6 +27,31 @@ async function main() {
   await prisma.submission.deleteMany({});
   await prisma.testCase.deleteMany({});
   await prisma.problem.deleteMany({});
+  await prisma.hackathon.deleteMany({});
+
+  await prisma.hackathon.createMany({
+    data: [
+      {
+        title: "CodeMatch Global Hackathon 2026",
+        description: "Build developer matchmaking utilities and collaborate in real-time.",
+        date: new Date("2026-07-24"),
+        link: "https://hackathon.codematch.com"
+      },
+      {
+        title: "Web3 Developer Sprint",
+        description: "Create decentralised file transfer layers and messaging portals.",
+        date: new Date("2026-08-12"),
+        link: "https://web3devs.org"
+      },
+      {
+        title: "Generative AI Hackathon",
+        description: "Embed custom LLM agents to provide feedback on resume profiles.",
+        date: new Date("2026-09-05"),
+        link: "https://aihack.devpost.com"
+      }
+    ]
+  });
+  console.log("Hackathons seeded successfully.");
 
   // 1. Two Sum
   const twoSum = await prisma.problem.create({

@@ -63,7 +63,7 @@ button{
 }
 
 button:hover{
-    background:var(--primary-hover);
+    background:var(--primary-dark);
 }
 
 .auth-footer{

@@ -45,8 +45,8 @@
   border: none;
   border-radius: 8px;
 
-  background: #2563eb;
-  color: white;
+  background: var(--primary);
+  color: var(--surface);
 
   font-size: 15px;
   font-weight: 600;
@@ -60,7 +60,7 @@
 }
 
 .skill-item button:hover:not(:disabled) {
-  background: #1d4ed8;
+  background: var(--primary-dark);
 }
 
 .skill-item button:disabled {

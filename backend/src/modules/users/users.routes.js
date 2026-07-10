@@ -6,14 +6,14 @@ const {
   profile,
   updateCurrentUser,
   getUsers,
+  getAdminsHandler,
 } = require("./users.controller");
 
 const router = express.Router();
 
 router.get("/profile", protect, profile);
-
+router.get("/admins", protect, getAdminsHandler);
 router.get("/", protect, getUsers);
-
 router.patch("/me", protect, updateCurrentUser);
 
 module.exports = router;

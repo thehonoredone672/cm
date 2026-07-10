@@ -31,8 +31,20 @@ const getUsers = async (req, res) => {
   });
 };
 
+const { getPlatformAdmins } = require("./users.service");
+
+const getAdminsHandler = async (req, res, next) => {
+  try {
+    const admins = await getPlatformAdmins();
+    res.status(200).json({ success: true, data: admins });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   profile,
   updateCurrentUser,
   getUsers,
+  getAdminsHandler,
 };

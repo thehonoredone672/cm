@@ -126,7 +126,7 @@ font-weight:600;
 
 .send-btn{
 
-background:#2563eb;
+background:var(--primary);
 
 color:white;
 

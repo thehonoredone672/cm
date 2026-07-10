@@ -22,7 +22,21 @@ const isTeammate = async (user1Id, user2Id) => {
       ],
     },
   });
-  return !!invite;
+  if (invite) return true;
+
+  const sharedTeam = await prisma.teamMember.findFirst({
+    where: {
+      userId: user1Id,
+      team: {
+        members: {
+          some: {
+            userId: user2Id,
+          },
+        },
+      },
+    },
+  });
+  return !!sharedTeam;
 };
 
 // ─── Teammates ────────────────────────────────────────────────────────────────
@@ -39,11 +53,30 @@ const getTeammates = async (userId) => {
     },
   });
 
-  const teammates = invites.map((inv) =>
+  const inviteTeammates = invites.map((inv) =>
     inv.senderId === userId ? inv.receiver : inv.sender
   );
 
-  return Array.from(new Map(teammates.map((t) => [t.id, t])).values());
+  const myTeams = await prisma.teamMember.findMany({
+    where: { userId },
+    select: { teamId: true },
+  });
+  const teamIds = myTeams.map((t) => t.teamId);
+
+  const teamMembers = await prisma.teamMember.findMany({
+    where: {
+      teamId: { in: teamIds },
+      userId: { not: userId },
+    },
+    include: {
+      user: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  const teamTeammates = teamMembers.map((m) => m.user);
+
+  const all = [...inviteTeammates, ...teamTeammates];
+  return Array.from(new Map(all.map((t) => [t.id, t])).values());
 };
 
 // ─── Conversations ────────────────────────────────────────────────────────────

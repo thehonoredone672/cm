@@ -83,8 +83,16 @@ const getAllUsers = async () => {
   return users.map(({ password, ...user }) => user);
 };
 
+const getPlatformAdmins = async () => {
+  return prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true, name: true, email: true }
+  });
+};
+
 module.exports = {
   getCurrentUser,
   updateProfile,
   getAllUsers,
+  getPlatformAdmins,
 };
