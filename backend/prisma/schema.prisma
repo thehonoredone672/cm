@@ -81,6 +81,11 @@ model User {
   leetcodeProfile String?
   filedReports   Report[]  @relation("ReporterRelation")
   badges         UserBadge[]
+  posts           CommunityPost[]
+  postLikes       PostLike[]
+  comments        PostComment[]
+  bookmarked      BookmarkedResource[]
+  jobApplications JobApplication[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -253,21 +258,22 @@ enum Difficulty {
 }
 
 model Problem {
-  id          String       @id @default(uuid())
-  title       String
-  description String
-  category    String
-  difficulty  Difficulty   @default(EASY)
-  tags        String[]
-  constraints String?
-  status      String       @default("PUBLISHED") // DRAFT, PUBLISHED
-  visibility  String       @default("PUBLIC")    // PUBLIC, PRIVATE
-  starterCode Json         // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
-  examples    Json         // E.g. [{ input: "...", output: "...", explanation: "..." }]
-  testCases   TestCase[]
-  submissions Submission[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id             String          @id @default(uuid())
+  title          String
+  description    String
+  category       String
+  difficulty     Difficulty      @default(EASY)
+  tags           String[]
+  constraints    String?
+  status         String          @default("PUBLISHED") // DRAFT, PUBLISHED
+  visibility     String          @default("PUBLIC")    // PUBLIC, PRIVATE
+  starterCode    Json            // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
+  examples       Json            // E.g. [{ input: "...", output: "...", explanation: "..." }]
+  testCases      TestCase[]
+  submissions    Submission[]
+  dailyChallenge DailyChallenge?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 }
 
 model TestCase {
@@ -364,6 +370,86 @@ model UserBadge {
   badgeName String
   earnedAt  DateTime @default(now())
   @@unique([userId, badgeName])
+}
+
+model CommunityPost {
+  id        String   @id @default(uuid())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  tags      String[]
+  likes     PostLike[]
+  comments  PostComment[]
+  createdAt DateTime @default(now())
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([postId, userId])
+}
+
+model PostComment {
+  id        String   @id @default(uuid())
+  postId    String
+  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model LearningResource {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  category    String   // Roadmaps, Tutorials, Articles
+  link        String
+  createdAt   DateTime @default(now())
+  bookmarkedBy BookmarkedResource[]
+}
+
+model BookmarkedResource {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  resourceId String
+  resource   LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  @@unique([userId, resourceId])
+}
+
+model JobListing {
+  id          String   @id @default(uuid())
+  title       String
+  company     String
+  description String
+  location    String
+  type        String   // Internship, Job
+  link        String
+  createdAt   DateTime @default(now())
+  appliedJobs JobApplication[]
+}
+
+model JobApplication {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId     String
+  job       JobListing @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  status    String   @default("PENDING") // PENDING, SAVED, APPLIED, INTERVIEWING, REJECTED
+  createdAt DateTime @default(now())
+  @@unique([userId, jobId])
+}
+
+model DailyChallenge {
+  id        String   @id @default(uuid())
+  problemId String   @unique
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  date      DateTime @unique
 }
 
 

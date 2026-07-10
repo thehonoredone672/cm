@@ -211,7 +211,7 @@ const getMatches = async (
   const otherUsers =
     users.filter(
       (user) =>
-        user.id !== userId
+        user.id !== userId && user.role !== "ADMIN"
     );
 
   const matches =

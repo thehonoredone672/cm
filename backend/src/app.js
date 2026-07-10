@@ -194,8 +194,12 @@ app.use(
 );
 
 const reportRoutes = require("./modules/reports/reports.routes");
-
 const hackathonRoutes = require("./modules/hackathons/hackathons.routes");
+const communityRoutes = require("./modules/community/community.routes");
+const resourceRoutes = require("./modules/resources/resources.routes");
+const careerRoutes = require("./modules/careers/careers.routes");
+const aiRoutes = require("./modules/ai/ai.routes");
+const challengeRoutes = require("./modules/challenges/challenges.routes");
 
 app.use(
   "/api/projects",
@@ -215,6 +219,31 @@ app.use(
 app.use(
   "/api/hackathons",
   hackathonRoutes
+);
+
+app.use(
+  "/api/posts",
+  communityRoutes
+);
+
+app.use(
+  "/api/resources",
+  resourceRoutes
+);
+
+app.use(
+  "/api/careers",
+  careerRoutes
+);
+
+app.use(
+  "/api/ai",
+  aiRoutes
+);
+
+app.use(
+  "/api/challenges",
+  challengeRoutes
 );
 
 app.use(

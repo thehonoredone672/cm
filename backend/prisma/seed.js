@@ -23,11 +23,41 @@ async function main() {
   });
   console.log("Admin account (admin@codematch.com / adminpassword) seeded successfully.");
 
+  const studentPassword = await bcrypt.hash("studentpassword", 10);
+
+  const student1 = await prisma.user.upsert({
+    where: { email: "student1@codematch.com" },
+    update: { name: "Jane Doe", password: studentPassword, role: "STUDENT" },
+    create: { name: "Jane Doe", email: "student1@codematch.com", password: studentPassword, role: "STUDENT", bio: "Passionate about modern UI design and minimalist interfaces." }
+  });
+
+  const student2 = await prisma.user.upsert({
+    where: { email: "student2@codematch.com" },
+    update: { name: "John Smith", password: studentPassword, role: "STUDENT" },
+    create: { name: "John Smith", email: "student2@codematch.com", password: studentPassword, role: "STUDENT", bio: "Backend engineer focused on highly scalable systems." }
+  });
+
+  const student3 = await prisma.user.upsert({
+    where: { email: "student3@codematch.com" },
+    update: { name: "Bob Johnson", password: studentPassword, role: "STUDENT" },
+    create: { name: "Bob Johnson", email: "student3@codematch.com", password: studentPassword, role: "STUDENT", bio: "Algorithms enthusiast and competitive coding wizard." }
+  });
+
+  console.log("Student accounts seeded successfully.");
+
   // Delete existing ones
   await prisma.submission.deleteMany({});
   await prisma.testCase.deleteMany({});
   await prisma.problem.deleteMany({});
   await prisma.hackathon.deleteMany({});
+  await prisma.postLike.deleteMany({});
+  await prisma.postComment.deleteMany({});
+  await prisma.communityPost.deleteMany({});
+  await prisma.bookmarkedResource.deleteMany({});
+  await prisma.learningResource.deleteMany({});
+  await prisma.jobApplication.deleteMany({});
+  await prisma.jobListing.deleteMany({});
+  await prisma.dailyChallenge.deleteMany({});
 
   await prisma.hackathon.createMany({
     data: [
@@ -139,6 +169,74 @@ async function main() {
   });
 
   console.log("Problems seeded successfully!");
+
+  // Seed Learning Resources
+  await prisma.learningResource.createMany({
+    data: [
+      {
+        title: "Frontend Web Developer Roadmap 2026",
+        description: "Step-by-step guide to becoming a modern React developer with TypeScript and Vite.",
+        category: "Roadmaps",
+        link: "https://roadmap.sh/frontend"
+      },
+      {
+        title: "Prisma ORM Crash Course",
+        description: "Learn how to define database schemas, manage relations, and run migrations in Node.js.",
+        category: "Tutorials",
+        link: "https://www.prisma.io/docs"
+      },
+      {
+        title: "Docker Containerization Essentials",
+        description: "An absolute beginners guide to containerizing Node.js servers, caching with Redis, and composing services.",
+        category: "Articles",
+        link: "https://docs.docker.com"
+      }
+    ]
+  });
+  console.log("Learning resources seeded successfully.");
+
+  // Seed Job Listings
+  await prisma.jobListing.createMany({
+    data: [
+      {
+        title: "Frontend React Developer Intern",
+        company: "Monochrome Labs",
+        description: "Build state-of-the-art minimalist user interfaces using Vite, React, and clean CSS variables.",
+        location: "Remote",
+        type: "Internship",
+        link: "https://careers.monochromelabs.com"
+      },
+      {
+        title: "Junior Node Backend Engineer",
+        company: "CodeMatch Inc.",
+        description: "Help build secure REST APIs, optimize PostgreSQL queries, and design socket communication layers.",
+        location: "San Francisco, CA",
+        type: "Job",
+        link: "https://careers.codematch.com"
+      }
+    ]
+  });
+  console.log("Job listings seeded successfully.");
+
+  // Seed Daily Challenge
+  await prisma.dailyChallenge.create({
+    data: {
+      problemId: twoSum.id,
+      date: new Date()
+    }
+  });
+  console.log("Daily challenge seeded successfully.");
+
+  // Seed community posts by student1
+  await prisma.communityPost.create({
+    data: {
+      authorId: student1.id,
+      title: "Pro-tip: Solving Two Sum in a single pass",
+      content: "Instead of doing a nested loop O(N^2) search, you can use a Javascript Map to store complements and index positions. This yields a neat O(N) runtime complexity!",
+      tags: ["algorithms", "javascript"]
+    }
+  });
+  console.log("Community posts seeded successfully.");
 }
 
 main()

@@ -66,6 +66,9 @@ const updateProfile = async (userId, data) => {
 
 const getAllUsers = async () => {
   const users = await prisma.user.findMany({
+    where: {
+      role: { not: "ADMIN" },
+    },
     include: {
       skills: {
         include: {

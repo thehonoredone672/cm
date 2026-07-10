@@ -18,7 +18,7 @@ const sendInvite = async (
       },
     });
 
-  if (!receiver) {
+  if (!receiver || receiver.role === "ADMIN") {
     throw new Error(
       "Receiver not found."
     );

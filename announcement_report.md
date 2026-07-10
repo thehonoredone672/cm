@@ -65,3 +65,16 @@ All tests passed with zero errors:
    === ALL SECURITY AND HEALTH QUALITY TESTS PASSED ===
    ```
 3. **Frontend Compilation**: Compiled with zero warnings/errors in 366ms.
+
+---
+
+## 🔐 4. Platform Accounts Directory (Plaintext Seed Credentials)
+
+Use these accounts to test roles, matchmaking, community feeds, and invites.
+
+| Account Type | Email | Plaintext Password | Seeded Name | Role |
+| :--- | :--- | :--- | :--- | :--- |
+| **System Administrator** | `admin@codematch.com` | `adminpassword` | System Admin | `ADMIN` |
+| **Student 1** | `student1@codematch.com` | `studentpassword` | Jane Doe | `STUDENT` |
+| **Student 2** | `student2@codematch.com` | `studentpassword` | John Smith | `STUDENT` |
+| **Student 3** | `student3@codematch.com` | `studentpassword` | Bob Johnson | `STUDENT` |
