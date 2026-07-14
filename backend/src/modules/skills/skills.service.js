@@ -29,7 +29,8 @@ const getAllSkills = async () => {
 
 const addSkillToUser = async (
   userId,
-  skillId
+  skillId,
+  { proficiency = "INTERMEDIATE", yearsOfExperience = 0 } = {}
 ) => {
   const skill =
     await prisma.skill.findUnique({
@@ -60,7 +61,26 @@ const addSkillToUser = async (
     data: {
       userId,
       skillId,
+      proficiency,
+      yearsOfExperience: Number(yearsOfExperience),
     },
+  });
+};
+
+const updateUserSkill = async (userId, skillId, { proficiency, yearsOfExperience } = {}) => {
+  const existing = await prisma.userSkill.findFirst({
+    where: { userId, skillId }
+  });
+  if (!existing) {
+    throw new Error("User skill association not found");
+  }
+
+  return prisma.userSkill.update({
+    where: { id: existing.id },
+    data: {
+      proficiency: proficiency !== undefined ? proficiency : undefined,
+      yearsOfExperience: yearsOfExperience !== undefined ? Number(yearsOfExperience) : undefined
+    }
   });
 };
 
@@ -96,4 +116,5 @@ module.exports = {
   addSkillToUser,
   getUserSkills,
   removeSkillFromUser,
+  updateUserSkill
 };

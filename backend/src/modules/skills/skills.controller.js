@@ -4,6 +4,7 @@ const {
   addSkillToUser,
   removeSkillFromUser,
   getUserSkills,
+  updateUserSkill,
 } = require("./skills.service");
 
 const createSkillHandler =
@@ -31,20 +32,36 @@ const getSkillsHandler =
   };
 
 const addSkillHandler =
-  async (req, res) => {
-    const { skillId } = req.body;
+  async (req, res, next) => {
+    try {
+      const { skillId, proficiency, yearsOfExperience } = req.body;
 
-    const result =
-      await addSkillToUser(
-        req.user.id,
-        skillId
-      );
+      const result =
+        await addSkillToUser(
+          req.user.id,
+          skillId,
+          { proficiency, yearsOfExperience }
+        );
 
-    res.status(201).json({
-      success: true,
-      data: result,
-    });
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
   };
+
+const updateSkillHandler = async (req, res, next) => {
+  try {
+    const { skillId } = req.params;
+    const { proficiency, yearsOfExperience } = req.body;
+    const result = await updateUserSkill(req.user.id, skillId, { proficiency, yearsOfExperience });
+    res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
 
 const removeSkillHandler =
   async (req, res) => {
@@ -81,4 +98,5 @@ module.exports = {
   addSkillHandler,
   removeSkillHandler,
   getUserSkillsHandler,
+  updateSkillHandler
 };

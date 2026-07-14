@@ -13,10 +13,10 @@ const {
   addSkillHandler,
   removeSkillHandler,
   getUserSkillsHandler,
+  updateSkillHandler
 } = require("./skills.controller");
 
-const router =
-  express.Router();
+const router = express.Router();
 
 router.post(
   "/",
@@ -38,6 +38,12 @@ router.get(
   "/user",
   protect,
   getUserSkillsHandler
+);
+
+router.patch(
+  "/user/:skillId",
+  protect,
+  updateSkillHandler
 );
 
 router.delete(
