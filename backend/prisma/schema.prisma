@@ -120,6 +120,10 @@ model UserSkill {
   user  User  @relation(fields: [userId], references: [id])
   skill Skill @relation(fields: [skillId], references: [id])
 
+  proficiency       String   @default("INTERMEDIATE") // BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
+  yearsOfExperience Int      @default(0)
+  createdAt         DateTime @default(now())
+
   @@unique([userId, skillId])
 }
 
