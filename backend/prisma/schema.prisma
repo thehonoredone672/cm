@@ -10,6 +10,9 @@ datasource db {
 enum UserRole {
   STUDENT
   ADMIN
+  FACULTY
+  MENTOR
+  RECRUITER
 }
 
 enum EducationType {
@@ -86,6 +89,16 @@ model User {
   comments        PostComment[]
   bookmarked      BookmarkedResource[]
   jobApplications JobApplication[]
+
+  collegeId          String?
+  collegeRelation    College? @relation(fields: [collegeId], references: [id])
+  facultyProfile     FacultyProfile?
+  mentorProfile      MentorProfile?
+  companyProfile     CompanyProfile?
+  eventRegistrations EventRegistration[]
+  mentorshipBookings MentorshipBooking[]
+  driveApplications  CandidateApplication[]
+  certificates       Certificate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -237,6 +250,7 @@ model Team {
   members     TeamMember[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  hackathonRegistrations HackathonRegistration[]
 }
 
 model TeamMember {
@@ -355,12 +369,13 @@ model SystemConfig {
 }
 
 model Hackathon {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  date        DateTime
-  link        String
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  date          DateTime
+  link          String
+  createdAt     DateTime @default(now())
+  registrations HackathonRegistration[]
 }
 
 model UserBadge {
@@ -450,6 +465,135 @@ model DailyChallenge {
   problemId String   @unique
   problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
   date      DateTime @unique
+}
+
+model College {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  domain    String?  
+  createdAt DateTime @default(now())
+  users     User[]   
+  drives    RecruitmentDrive[]
+}
+
+model FacultyProfile {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department String
+  title      String
+  verified   Boolean  @default(false)
+}
+
+model HackathonRegistration {
+  id           String   @id @default(uuid())
+  hackathonId  String
+  hackathon    Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  projectTitle String?
+  projectDesc  String?
+  projectLink  String?
+  score        Float?
+  isWinner     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  @@unique([hackathonId, teamId])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  type        String   // WORKSHOP, WEBINAR, TECH_EVENT
+  date        DateTime
+  link        String?
+  speaker     String?
+  createdAt   DateTime @default(now())
+  registrations EventRegistration[]
+}
+
+model EventRegistration {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attended  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  @@unique([eventId, userId])
+}
+
+model MentorProfile {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  company    String
+  bio        String
+  skills     String[]
+  rating     Float    @default(5.0)
+  bookings   MentorshipBooking[]
+}
+
+model MentorshipBooking {
+  id              String   @id @default(uuid())
+  mentorProfileId String
+  mentor          MentorProfile @relation(fields: [mentorProfileId], references: [id], onDelete: Cascade)
+  studentId       String
+  student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scheduledAt     DateTime
+  status          String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  rating          Int?     
+  feedback        String?
+  createdAt       DateTime @default(now())
+}
+
+model CompanyProfile {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String
+  website     String
+  logoUrl     String?
+  userId      String   @unique 
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drives      RecruitmentDrive[]
+}
+
+model RecruitmentDrive {
+  id          String   @id @default(uuid())
+  companyId   String
+  company     CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  collegeId   String?
+  college     College? @relation(fields: [collegeId], references: [id])
+  title       String   
+  status      String   @default("UPCOMING") // UPCOMING, ACTIVE, COMPLETED
+  date        DateTime
+  createdAt   DateTime @default(now())
+  candidates  CandidateApplication[]
+}
+
+model CandidateApplication {
+  id              String   @id @default(uuid())
+  driveId         String
+  drive           RecruitmentDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status          String   @default("APPLIED") // APPLIED, SCREENED, ASSESSMENT_PENDING, INTERVIEWING, OFFERED, REJECTED
+  score           Int?     
+  offerLetterUrl  String?
+  createdAt       DateTime @default(now())
+  @@unique([driveId, userId])
+}
+
+model Certificate {
+  id               String   @id @default(uuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String   
+  issuedBy         String   
+  verificationCode String   @unique
+  qrCodeUrl        String?
+  createdAt        DateTime @default(now())
 }
 
 

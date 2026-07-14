@@ -27,8 +27,44 @@ const deleteHackathon = async (id) => {
   });
 };
 
+const registerTeamForHackathon = async (hackathonId, teamId) => {
+  return prisma.hackathonRegistration.create({
+    data: { hackathonId, teamId }
+  });
+};
+
+const submitProject = async (hackathonId, teamId, projectTitle, projectDesc, projectLink) => {
+  return prisma.hackathonRegistration.update({
+    where: { hackathonId_teamId: { hackathonId, teamId } },
+    data: { projectTitle, projectDesc, projectLink }
+  });
+};
+
+const gradeProject = async (hackathonId, teamId, score, isWinner) => {
+  return prisma.hackathonRegistration.update({
+    where: { hackathonId_teamId: { hackathonId, teamId } },
+    data: { score: Number(score), isWinner }
+  });
+};
+
+const getHackathonLeaderboard = async (hackathonId) => {
+  return prisma.hackathonRegistration.findMany({
+    where: { hackathonId },
+    include: {
+      team: {
+        select: { id: true, name: true, members: { include: { user: { select: { name: true } } } } }
+      }
+    },
+    orderBy: { score: "desc" }
+  });
+};
+
 module.exports = {
   getHackathons,
   createHackathon,
-  deleteHackathon
+  deleteHackathon,
+  registerTeamForHackathon,
+  submitProject,
+  gradeProject,
+  getHackathonLeaderboard
 };

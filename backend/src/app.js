@@ -200,6 +200,11 @@ const resourceRoutes = require("./modules/resources/resources.routes");
 const careerRoutes = require("./modules/careers/careers.routes");
 const aiRoutes = require("./modules/ai/ai.routes");
 const challengeRoutes = require("./modules/challenges/challenges.routes");
+const collegeRoutes = require("./modules/colleges/colleges.routes");
+const eventRoutes = require("./modules/events/events.routes");
+const mentorRoutes = require("./modules/mentors/mentors.routes");
+const recruitmentRoutes = require("./modules/recruitment/recruitment.routes");
+const certificateRoutes = require("./modules/certificates/certificates.routes");
 
 app.use(
   "/api/projects",
@@ -244,6 +249,31 @@ app.use(
 app.use(
   "/api/challenges",
   challengeRoutes
+);
+
+app.use(
+  "/api/colleges",
+  collegeRoutes
+);
+
+app.use(
+  "/api/events",
+  eventRoutes
+);
+
+app.use(
+  "/api/mentors",
+  mentorRoutes
+);
+
+app.use(
+  "/api/recruitment",
+  recruitmentRoutes
+);
+
+app.use(
+  "/api/certificates",
+  certificateRoutes
 );
 
 app.use(

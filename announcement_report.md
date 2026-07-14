@@ -78,3 +78,5 @@ Use these accounts to test roles, matchmaking, community feeds, and invites.
 | **Student 1** | `student1@codematch.com` | `studentpassword` | Jane Doe | `STUDENT` |
 | **Student 2** | `student2@codematch.com` | `studentpassword` | John Smith | `STUDENT` |
 | **Student 3** | `student3@codematch.com` | `studentpassword` | Bob Johnson | `STUDENT` |
+| **Professional Mentor** | `mentor1@codematch.com` | `mentorpassword` | Alice Vance | `MENTOR` |
+| **Corporate Recruiter** | `recruiter1@codematch.com` | `recruiterpassword` | Charlie Recruiter | `RECRUITER` |

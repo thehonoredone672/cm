@@ -58,6 +58,17 @@ async function main() {
   await prisma.jobApplication.deleteMany({});
   await prisma.jobListing.deleteMany({});
   await prisma.dailyChallenge.deleteMany({});
+  await prisma.certificate.deleteMany({});
+  await prisma.candidateApplication.deleteMany({});
+  await prisma.recruitmentDrive.deleteMany({});
+  await prisma.companyProfile.deleteMany({});
+  await prisma.mentorshipBooking.deleteMany({});
+  await prisma.mentorProfile.deleteMany({});
+  await prisma.eventRegistration.deleteMany({});
+  await prisma.event.deleteMany({});
+  await prisma.facultyProfile.deleteMany({});
+  await prisma.hackathonRegistration.deleteMany({});
+  await prisma.college.deleteMany({});
 
   await prisma.hackathon.createMany({
     data: [
@@ -237,6 +248,84 @@ async function main() {
     }
   });
   console.log("Community posts seeded successfully.");
+
+  const harvard = await prisma.college.create({
+    data: { name: "Harvard University", domain: "harvard.edu" }
+  });
+  const mit = await prisma.college.create({
+    data: { name: "Massachusetts Institute of Technology", domain: "mit.edu" }
+  });
+  console.log("Colleges seeded successfully.");
+
+  const mentorPassword = await bcrypt.hash("mentorpassword", 10);
+  const mentorUser = await prisma.user.create({
+    data: {
+      name: "Alice Vance",
+      email: "mentor1@codematch.com",
+      password: mentorPassword,
+      role: "MENTOR"
+    }
+  });
+  await prisma.mentorProfile.create({
+    data: {
+      userId: mentorUser.id,
+      title: "Senior Engineer",
+      company: "Google",
+      bio: "Passionate about mentoring young developers in systems engineering and databases.",
+      skills: ["PostgreSQL", "C++", "System Design"]
+    }
+  });
+  console.log("Mentors seeded successfully.");
+
+  const recruiterPassword = await bcrypt.hash("recruiterpassword", 10);
+  const recruiterUser = await prisma.user.create({
+    data: {
+      name: "Charlie Recruiter",
+      email: "recruiter1@codematch.com",
+      password: recruiterPassword,
+      role: "RECRUITER"
+    }
+  });
+  const starkCo = await prisma.companyProfile.create({
+    data: {
+      userId: recruiterUser.id,
+      name: "Stark Industries",
+      description: "Advanced engineering, AI, clean energy, and cyber security systems.",
+      website: "https://starkindustries.com"
+    }
+  });
+  await prisma.recruitmentDrive.create({
+    data: {
+      companyId: starkCo.id,
+      collegeId: harvard.id,
+      title: "Campus Associate Program 2026",
+      date: new Date("2026-07-28"),
+      status: "ACTIVE"
+    }
+  });
+  console.log("Companies and Drives seeded successfully.");
+
+  await prisma.event.createMany({
+    data: [
+      {
+        title: "Introduction to Prisma ORM",
+        description: "Learn how to define schemas, push schema migrations, and sync clients natively.",
+        type: "WORKSHOP",
+        date: new Date("2026-07-20"),
+        speaker: "Jane Doe",
+        link: "https://webinar.codematch.com/prisma-orm"
+      },
+      {
+        title: "Career paths in Generative AI",
+        description: "Overview of vector databases, LLM prompt orchestrations, and AI agent frameworks.",
+        type: "WEBINAR",
+        date: new Date("2026-08-05"),
+        speaker: "System Admin",
+        link: "https://webinar.codematch.com/genai-careers"
+      }
+    ]
+  });
+  console.log("Events seeded successfully.");
 }
 
 main()
