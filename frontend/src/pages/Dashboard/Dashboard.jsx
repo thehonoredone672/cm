@@ -1,51 +1,130 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { getDashboardStats } from "../../services/dashboardService";
-import { getRecommendedTeams, getRecommendedProblems } from "../../services/recommendationService";
+import { getMatches } from "../../services/matchService";
+import { getReceivedInvites, acceptInvite, rejectInvite } from "../../services/teamInviteService";
+import { getLatestSubmissions } from "../../services/submissionService";
+import { getNotifications } from "../../services/notificationService";
+import { getProblems } from "../../services/problemService";
 import { useAuth } from "../../context/AuthContext";
 import "./Dashboard.css";
+
+// Framer Motion Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 15 }
+  }
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Core Data States
   const [stats, setStats] = useState(null);
+  const [matches, setMatches] = useState([]);
+  const [invites, setInvites] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [hackathons, setHackathons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // Recommendations state
-  const [recTeams, setRecTeams] = useState([]);
-  const [recProblems, setRecProblems] = useState([]);
+  const [toastMessage, setToastMessage] = useState(null);
 
   useEffect(() => {
-    fetchStats();
+    loadDashboardData();
   }, []);
 
-  const fetchStats = async () => {
+  const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const data = await getDashboardStats();
-      setStats(data);
-      // Fetch recommendations
-      const [teamsData, probsData] = await Promise.all([
-        getRecommendedTeams(),
-        getRecommendedProblems(),
+      setError("");
+      
+      const [statsData, matchesData, invitesData, subsData, notifsData, hacksData] = await Promise.all([
+        getDashboardStats(),
+        getMatches(),
+        getReceivedInvites(),
+        getLatestSubmissions(),
+        getNotifications(),
+        getProblems() // We can query problems or check hackathons. Let's fetch hackathons below.
       ]);
-      setRecTeams(teamsData);
-      setRecProblems(probsData);
+
+      setStats(statsData);
+      setMatches(matchesData.slice(0, 3)); // Display top 3
+      setInvites(invitesData.filter(i => i.status === "PENDING"));
+      setSubmissions(subsData);
+      setNotifications(notifsData.slice(0, 3));
+
+      // Fetch hackathons from backend
+      const hackRes = await fetch("http://localhost:5000/api/hackathons", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      const hackPayload = await hackRes.json();
+      if (hackPayload?.success) {
+        setHackathons(hackPayload.data.slice(0, 2));
+      }
+
     } catch (err) {
       console.error(err);
-      setError("Failed to load dashboard metrics.");
+      setError("Failed to synchronize dashboard metrics. Reconnecting...");
     } finally {
       setLoading(false);
     }
   };
 
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleAcceptInvite = async (inviteId) => {
+    try {
+      await acceptInvite(inviteId);
+      triggerToast("Invitation accepted successfully!");
+      loadDashboardData();
+    } catch (e) {
+      triggerToast(e.response?.data?.message || "Could not accept invitation");
+    }
+  };
+
+  const handleRejectInvite = async (inviteId) => {
+    try {
+      await rejectInvite(inviteId);
+      triggerToast("Invitation rejected.");
+      loadDashboardData();
+    } catch (e) {
+      triggerToast(e.response?.data?.message || "Could not reject invitation");
+    }
+  };
+
+  const getGreeting = () => {
+    const hours = new Date().getHours();
+    if (hours < 12) return "Good morning";
+    if (hours < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
   if (loading) {
     return (
-      <div className="dashboard-page">
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
-          <div className="skeleton-loader" style={{ width: "100%", maxWidth: "800px", height: "300px", borderRadius: "12px" }}></div>
+      <div className="dashboard-loading-wrapper">
+        <div className="skeleton-grid">
+          <div className="skeleton-item hero-skeleton" />
+          <div className="skeleton-item stats-skeleton" />
+          <div className="skeleton-item stats-skeleton" />
+          <div className="skeleton-item stats-skeleton" />
+          <div className="skeleton-item feed-skeleton" />
         </div>
       </div>
     );
@@ -53,275 +132,323 @@ export default function Dashboard() {
 
   if (error) {
     return (
-      <div className="dashboard-page">
-        <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "16px", borderRadius: "var(--radius-sm)" }}>{error}</div>
+      <div className="dashboard-error-wrapper">
+        <div className="error-card">
+          <span style={{ fontSize: "36px" }}>📡</span>
+          <h3>Sync Interrupted</h3>
+          <p>{error}</p>
+          <button className="btn-primary" onClick={loadDashboardData}>Retry Synchronization</button>
+        </div>
       </div>
     );
   }
 
-  const formatActivityDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-  };
+  // Profile completion missing checklist
+  const missingChecklist = [];
+  if (stats?.userDetails) {
+    const ud = stats.userDetails;
+    if (!ud.bio) missingChecklist.push({ label: "Add Bio Statement", path: "/profile" });
+    if (!ud.githubUrl) missingChecklist.push({ label: "Link GitHub Username", path: "/profile" });
+    if (!ud.linkedinUrl) missingChecklist.push({ label: "Link LinkedIn URL", path: "/profile" });
+    if (!ud.hasSkills) missingChecklist.push({ label: "Define Tech Skills", path: "/profile" });
+    if (!ud.hasInterests) missingChecklist.push({ label: "Set Interests Tags", path: "/profile" });
+    if (!ud.hasProjects) missingChecklist.push({ label: "Showcase Projects", path: "/profile" });
+  }
 
-  const getActivityClass = (type) => {
-    return type.toLowerCase();
-  };
-
-  const cs = stats.codingSummary || { solvedCount: 0, submissionsCount: 0, successRate: 0, easySolved: 0, mediumSolved: 0, hardSolved: 0, heatmap: [] };
+  const cs = stats?.codingSummary || { solvedCount: 0, submissionsCount: 0, successRate: 0, easySolved: 0, mediumSolved: 0, hardSolved: 0 };
 
   return (
-    <div className="dashboard-page">
-      <div className="dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
-        <div>
-          <h1>Welcome back, {user?.name || "Collaborator"}!</h1>
-          <p>Explore recommended matches, stats analytics, and coding challenges.</p>
-        </div>
-        {user?.role === "ADMIN" && (
-          <span style={{ fontSize: "12px", background: "rgba(229, 231, 235, 0.1)", border: "1px solid var(--border)", padding: "6px 12px", borderRadius: "15px", fontWeight: "bold" }}>
-            🛡 Admin Account
-          </span>
+    <motion.div 
+      className="dashboard-page"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+    >
+      {/* Toast popup */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div 
+            className="dashboard-toast"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+          >
+            <span>💬 {toastMessage}</span>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
-      {/* Admin Panel Metrics Card (Sprint 3.10) */}
-      {user?.role === "ADMIN" && stats.adminStats && (
-        <div style={{ background: "var(--surface)", border: "1.5px solid var(--primary)", padding: "24px", borderRadius: "12px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 16px 0", color: "var(--text-primary)" }}>🛡 Admin Platform Analytics</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
-            <div style={{ padding: "16px", background: "var(--background)", borderRadius: "8px", border: "1px solid var(--border)" }}>
-              <span style={{ fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)" }}>Total Users</span>
-              <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{stats.adminStats.totalUsers}</div>
-            </div>
-            <div style={{ padding: "16px", background: "var(--background)", borderRadius: "8px", border: "1px solid var(--border)" }}>
-              <span style={{ fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)" }}>Active Users (Submitters)</span>
-              <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--primary)", marginTop: "4px" }}>{stats.adminStats.activeUsers}</div>
-            </div>
-            <div style={{ padding: "16px", background: "var(--background)", borderRadius: "8px", border: "1px solid var(--border)" }}>
-              <span style={{ fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)" }}>Total Teams Created</span>
-              <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{stats.adminStats.totalTeams}</div>
-            </div>
-            <div style={{ padding: "16px", background: "var(--background)", borderRadius: "8px", border: "1px solid var(--border)" }}>
-              <span style={{ fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)" }}>Total Coding Problems</span>
-              <div style={{ fontSize: "28px", fontWeight: 800, color: "var(--text-primary)", marginTop: "4px" }}>{stats.adminStats.totalProblems}</div>
+      {/* 1. Welcome Section & Admin Status */}
+      <div className="dashboard-header-container">
+        <div className="welcome-avatar-wrapper">
+          <div className="welcome-avatar-circle">
+            {user?.name ? user.name[0].toUpperCase() : "C"}
+          </div>
+          <div>
+            <span className="time-greeting">{getGreeting()},</span>
+            <h1 className="welcome-name">{user?.name || "Collaborator"}</h1>
+            <p className="welcome-bio">{user?.bio || "Set a profile biography to let matches know your skillsets."}</p>
+            <div className="welcome-meta-tags">
+              <span className="role-tag">{user?.role || "STUDENT"}</span>
+              {user?.college && <span className="college-tag">🏫 {user.college}</span>}
             </div>
           </div>
         </div>
+
+        {user?.role === "ADMIN" && (
+          <motion.div 
+            className="admin-badge-container"
+            whileHover={{ scale: 1.02 }}
+          >
+            <span className="shield-icon">🛡️</span>
+            <div>
+              <strong>Administrator Access</strong>
+              <p>System settings unlocked</p>
+            </div>
+          </motion.div>
+        )}
+      </div>
+
+      {/* Admin Panel Statistics */}
+      {user?.role === "ADMIN" && stats?.adminStats && (
+        <motion.div 
+          className="admin-dashboard-section"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <h2 className="section-title">🛡️ System Platform Metrics</h2>
+          <div className="stats-cards-grid">
+            <motion.div className="stats-card-item" variants={cardVariants}>
+              <span className="stats-card-label">Global Accounts</span>
+              <span className="stats-card-value">{stats.adminStats.totalUsers}</span>
+            </motion.div>
+            <motion.div className="stats-card-item" variants={cardVariants}>
+              <span className="stats-card-label">Active Submitters</span>
+              <span className="stats-card-value highlight">{stats.adminStats.activeUsers}</span>
+            </motion.div>
+            <motion.div className="stats-card-item" variants={cardVariants}>
+              <span className="stats-card-label">Total Teams</span>
+              <span className="stats-card-value">{stats.adminStats.totalTeams}</span>
+            </motion.div>
+            <motion.div className="stats-card-item" variants={cardVariants}>
+              <span className="stats-card-label">Problem Sets</span>
+              <span className="stats-card-value">{stats.adminStats.totalProblems}</span>
+            </motion.div>
+          </div>
+        </motion.div>
       )}
 
-      {/* Profile Completion Widget */}
-      <div className="completion-container">
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px", minWidth: "180px" }}>
-          <strong style={{ fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)" }}>Profile Completion</strong>
-          <span style={{ fontSize: "32px", fontWeight: 800, color: "var(--primary)" }}>{stats.profileCompletion}%</span>
-        </div>
-        <div className="completion-bar-outer">
-          <div className="completion-bar-inner" style={{ width: `${stats.profileCompletion}%` }} />
-        </div>
-        {stats.profileCompletion < 100 && (
-          <button 
-            className="btn-primary" 
-            onClick={() => navigate("/profile")}
-            style={{ padding: "10px 20px" }}
-          >
-            Complete Profile
-          </button>
-        )}
-      </div>
-
-      {/* Grid of Stats Widgets */}
-      <div className="dashboard-grid">
-        <div className="stat-widget" onClick={() => navigate("/skills")} style={{ cursor: "pointer" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span className="stat-widget__title">Skills Added</span>
-            <span style={{ fontSize: "20px" }}>🏷️</span>
-          </div>
-          <span className="stat-widget__value">{stats.skillsCount}</span>
-        </div>
-
-        <div className="stat-widget" onClick={() => navigate("/interests")} style={{ cursor: "pointer" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span className="stat-widget__title">Interests</span>
-            <span style={{ fontSize: "20px" }}>❤️</span>
-          </div>
-          <span className="stat-widget__value">{stats.interestsCount}</span>
-        </div>
-
-        <div className="stat-widget" onClick={() => navigate("/matches")} style={{ cursor: "pointer" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span className="stat-widget__title">Compatibilities</span>
-            <span style={{ fontSize: "20px" }}>🤝</span>
-          </div>
-          <span className="stat-widget__value">{stats.matchesCount}</span>
-        </div>
-
-        <div className="stat-widget" onClick={() => navigate("/teams")} style={{ cursor: "pointer" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span className="stat-widget__title">Teams formed</span>
-            <span style={{ fontSize: "20px" }}>👥</span>
-          </div>
-          <span className="stat-widget__value">{stats.teamsJoinedCount}</span>
-        </div>
-      </div>
-
-      {/* Coding Summary and Heatmap Section (Sprint 3.9 & 3.10) */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", flexWrap: "wrap" }}>
+      {/* Main Grid: Statistics & Progress Dashboard */}
+      <div className="dashboard-grid-layout">
         
-        {/* Coding Summary & Solves progress */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "24px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 20px 0" }}>Coding Summary</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", textAlign: "center", marginBottom: "20px" }}>
-            <div>
-              <div style={{ fontSize: "24px", fontWeight: 800 }}>{cs.solvedCount}</div>
-              <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Solved</span>
-            </div>
-            <div>
-              <div style={{ fontSize: "24px", fontWeight: 800 }}>{cs.submissionsCount}</div>
-              <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Submissions</span>
-            </div>
-            <div>
-              <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--success)" }}>{cs.successRate}%</div>
-              <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Success Rate</span>
-            </div>
-          </div>
+        {/* Left Side: Stats cards & Quick Actions */}
+        <div className="dashboard-left-panel">
           
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
-                <span>Easy Problems Solved</span>
-                <strong>{cs.easySolved}</strong>
-              </div>
-              <div style={{ height: "6px", background: "var(--border)", borderRadius: "3px" }}>
-                <div style={{ height: "100%", width: `${cs.solvedCount > 0 ? (cs.easySolved / cs.solvedCount) * 100 : 0}%`, background: "#22c55e", borderRadius: "3px" }} />
-              </div>
+          {/* 3. Statistics Cards Grid (8 Cards) */}
+          <div className="stats-cards-grid">
+            <div className="stats-card-item clickable" onClick={() => navigate("/profile")}>
+              <span className="stats-card-icon">📂</span>
+              <span className="stats-card-label">Projects</span>
+              <span className="stats-card-value">{stats?.projectsCount || 0}</span>
             </div>
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
-                <span>Medium Problems Solved</span>
-                <strong>{cs.mediumSolved}</strong>
-              </div>
-              <div style={{ height: "6px", background: "var(--border)", borderRadius: "3px" }}>
-                <div style={{ height: "100%", width: `${cs.solvedCount > 0 ? (cs.mediumSolved / cs.solvedCount) * 100 : 0}%`, background: "#f59e0b", borderRadius: "3px" }} />
-              </div>
+            <div className="stats-card-item clickable" onClick={() => navigate("/profile")}>
+              <span className="stats-card-icon">🏷️</span>
+              <span className="stats-card-label">Skills</span>
+              <span className="stats-card-value">{stats?.skillsCount || 0}</span>
             </div>
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
-                <span>Hard Problems Solved</span>
-                <strong>{cs.hardSolved}</strong>
-              </div>
-              <div style={{ height: "6px", background: "var(--border)", borderRadius: "3px" }}>
-                <div style={{ height: "100%", width: `${cs.solvedCount > 0 ? (cs.hardSolved / cs.solvedCount) * 100 : 0}%`, background: "#ef4444", borderRadius: "3px" }} />
-              </div>
+            <div className="stats-card-item clickable" onClick={() => navigate("/profile")}>
+              <span className="stats-card-icon">❤️</span>
+              <span className="stats-card-label">Interests</span>
+              <span className="stats-card-value">{stats?.interestsCount || 0}</span>
+            </div>
+            <div className="stats-card-item clickable" onClick={() => navigate("/matches")}>
+              <span className="stats-card-icon">🤝</span>
+              <span className="stats-card-label">Matches</span>
+              <span className="stats-card-value">{stats?.matchesCount || 0}</span>
+            </div>
+            <div className="stats-card-item clickable" onClick={() => navigate("/teams")}>
+              <span className="stats-card-icon">👥</span>
+              <span className="stats-card-label">Teams</span>
+              <span className="stats-card-value">{stats?.teamsJoinedCount || 0}</span>
+            </div>
+            <div className="stats-card-item clickable" onClick={() => navigate("/problems")}>
+              <span className="stats-card-icon">⚔️</span>
+              <span className="stats-card-label">Solved</span>
+              <span className="stats-card-value highlight">{cs.solvedCount}</span>
+            </div>
+            <div className="stats-card-item clickable" onClick={() => navigate("/ecosystem")}>
+              <span className="stats-card-icon">✍️</span>
+              <span className="stats-card-label">Applications</span>
+              <span className="stats-card-value">{stats?.applicationsCount || 0}</span>
+            </div>
+            <div className="stats-card-item clickable" onClick={() => navigate("/chat")}>
+              <span className="stats-card-icon">💬</span>
+              <span className="stats-card-label">Messages</span>
+              <span className="stats-card-value">{stats?.messagesCount || 0}</span>
             </div>
           </div>
-        </div>
 
-        {/* Heatmap Coding Activity timeline */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "24px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 20px 0" }}>Activity Timeline (7 Days)</h2>
-          <div style={{ display: "flex", justifyContent: "space-around", alignItems: "flex-end", height: "120px", padding: "10px 0" }}>
-            {cs.heatmap && cs.heatmap.map((h, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                <div style={{
-                  width: "28px",
-                  height: `${Math.min(h.count * 15 + 10, 80)}px`,
-                  background: h.count > 0 ? "var(--primary)" : "var(--border)",
-                  borderRadius: "6px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  fontSize: "10px",
-                  fontWeight: "bold"
-                }}>
-                  {h.count > 0 ? h.count : ""}
-                </div>
-                <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>{h.date}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Recommendation Section (Sprint 3.8) */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px", flexWrap: "wrap" }}>
-        
-        {/* Recommended Teams */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "24px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 16px 0" }}>Recommended Teams</h2>
-          {recTeams.length === 0 ? (
-            <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>No recommended teams available right now.</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {recTeams.map((team) => (
-                <div key={team.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "var(--background)", border: "1px solid var(--border)", borderRadius: "8px" }}>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: "14px" }}>{team.name}</h4>
-                    <span style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Leader: {team.leader}</span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "12px", color: "#22c55e", fontWeight: "bold" }}>{team.compatibilityScore}% match</span>
-                    <button className="btn-secondary" style={{ padding: "4px 8px", fontSize: "11px" }} onClick={() => navigate("/teams")}>Join</button>
-                  </div>
-                </div>
-              ))}
+          {/* 4. Quick Actions Panel */}
+          <div className="quick-actions-section">
+            <h3 className="section-title">⚡ Quick Actions</h3>
+            <div className="actions-buttons-row">
+              <button onClick={() => navigate("/profile")}>Edit Profile</button>
+              <button onClick={() => navigate("/matches")}>Find Matches</button>
+              <button onClick={() => navigate("/problems")}>Browse Problems</button>
+              <button onClick={() => navigate("/teams")}>Create Team</button>
+              <button onClick={() => navigate("/chat")}>View Chat</button>
             </div>
-          )}
+          </div>
+
+          {/* 8. Recent Problem Solving Submissions */}
+          <div className="recent-submissions-section">
+            <h3 className="section-title">⚔️ Recent Submissions</h3>
+            {submissions.length === 0 ? (
+              <div className="empty-sub-card">No recent code submissions. Visit the problems board to start practicing.</div>
+            ) : (
+              <div className="submissions-list">
+                {submissions.map(sub => (
+                  <div key={sub.id} className="sub-item-card" onClick={() => navigate(`/problems/${sub.problemId}`)}>
+                    <div>
+                      <strong className="prob-title">{sub.problem?.title || "Problem Code"}</strong>
+                      <div className="sub-meta-row">
+                        <span>Language: {sub.language}</span>
+                        {sub.executionTime && <span>Runtime: {sub.executionTime}ms</span>}
+                        <span>{new Date(sub.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <span className={`verdict-badge ${sub.status.toLowerCase()}`}>{sub.status}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
 
-        {/* Recommended Problems */}
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "24px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", margin: "0 0 16px 0" }}>Recommended Coding Tasks</h2>
-          {recProblems.length === 0 ? (
-            <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>No recommended tasks. Great job!</div>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {recProblems.map((prob) => (
-                <div key={prob.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px", background: "var(--background)", border: "1px solid var(--border)", borderRadius: "8px" }}>
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: "14px" }}>{prob.title}</h4>
-                    <div style={{ display: "flex", gap: "6px", fontSize: "10px", marginTop: "2px" }}>
-                      <span className={`lc-diff-badge lc-diff-badge--${prob.difficulty.toLowerCase()}`} style={{ padding: "0px 6px" }}>{prob.difficulty}</span>
-                      <span style={{ color: "var(--text-secondary)" }}>{prob.category}</span>
+        {/* Right Side: Profile completion progress, Recommended matching, Team invites */}
+        <div className="dashboard-right-panel">
+          
+          {/* 2. Profile Completion Widget */}
+          <div className="completion-card">
+            <div className="completion-card-header">
+              <h3>Profile Completion</h3>
+              <span className="completion-pct-badge">{stats?.profileCompletion}%</span>
+            </div>
+            <div className="progress-bar-container">
+              <div className="progress-bar-fill" style={{ width: `${stats?.profileCompletion}%` }} />
+            </div>
+
+            {/* List missing fields */}
+            {missingChecklist.length > 0 ? (
+              <div className="missing-fields-container">
+                <span className="missing-title">Complete your profile to increase match rates:</span>
+                <div className="missing-badges-row">
+                  {missingChecklist.map((item, idx) => (
+                    <span key={idx} className="missing-badge" onClick={() => navigate(item.path)}>
+                      {item.label} ➔
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <span className="profile-complete-status">✔ Your profile is fully complete! Maximum matchmaking compatibility enabled.</span>
+            )}
+          </div>
+
+          {/* 7. Pending Team Invitations Received */}
+          {invites.length > 0 && (
+            <div className="pending-invites-section">
+              <h3 className="section-title">🤝 Pending Team Invites</h3>
+              <div className="invites-list">
+                {invites.map(invite => (
+                  <div key={invite.id} className="invite-card-item">
+                    <div>
+                      <strong>Invite from {invite.sender?.name}</strong>
+                      <p className="invite-desc">{invite.message || "Wants to collaborate on code challenges."}</p>
+                    </div>
+                    <div className="invite-actions-row">
+                      <button className="btn-accept" onClick={() => handleAcceptInvite(invite.id)}>Accept</button>
+                      <button className="btn-reject" onClick={() => handleRejectInvite(invite.id)}>Reject</button>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "12px", color: "var(--primary)", fontWeight: "bold" }}>{prob.recommendationScore}% fit</span>
-                    <button className="btn-secondary" style={{ padding: "4px 8px", fontSize: "11px" }} onClick={() => navigate(`/problems/${prob.id}`)}>Solve</button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
-        </div>
-      </div>
 
-      {/* Timeline Feed */}
-      <div className="timeline-card">
-        <h2>Recent Activity Feed</h2>
-        {stats.recentActivity.length === 0 ? (
-          <div style={{ color: "var(--text-secondary)", textAlign: "center", padding: "24px 0" }}>
-            No recent activity logged. Start matching or invite others to see activities!
-          </div>
-        ) : (
-          <div className="timeline-list">
-            {stats.recentActivity.map((act) => (
-              <div key={act.id} className="timeline-item">
-                <div className={`timeline-dot ${getActivityClass(act.type)}`} />
-                <div className="timeline-content">
-                  <span className="timeline-text">{act.text}</span>
-                  <div className="timeline-meta">
-                    <span>{formatActivityDate(act.date)}</span>
-                    <span style={{ textTransform: "uppercase", fontSize: "10px", fontWeight: 700 }}>
-                      {act.status.toLowerCase()}
-                    </span>
+          {/* 6. Recommended Students Matches */}
+          <div className="recommended-students-section">
+            <h3 className="section-title">👥 Recommended Peers</h3>
+            {matches.length === 0 ? (
+              <div className="empty-matches-card">No recommended profile matches. Expand your skills profile tags list to find peers.</div>
+            ) : (
+              <div className="matches-list">
+                {matches.map(match => (
+                  <div key={match.id} className="match-card-item">
+                    <div className="match-avatar">
+                      {match.name ? match.name[0].toUpperCase() : "M"}
+                    </div>
+                    <div className="match-details">
+                      <strong>{match.name}</strong>
+                      <span className="match-score">🎯 {match.compatibilityScore}% Compatibility</span>
+                      <div className="match-skills-row">
+                        {match.skills?.slice(0, 3).map(s => (
+                          <span key={s} className="skill-bubble">{s}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <button className="btn-view-profile" onClick={() => navigate("/matches")}>View</button>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+
+          {/* 9. Notifications Preview */}
+          <div className="notifications-preview-section">
+            <h3 className="section-title">🔔 Latest Notifications</h3>
+            {notifications.length === 0 ? (
+              <div className="empty-notifs-card">No new notifications.</div>
+            ) : (
+              <div className="notifs-list">
+                {notifications.map(notif => (
+                  <div key={notif.id} className="notif-item-card" onClick={() => navigate(notif.link || "/dashboard")}>
+                    <strong>{notif.title}</strong>
+                    <p>{notif.message}</p>
+                    <span className="notif-date">{new Date(notif.createdAt).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 10. Upcoming Events & Hackathons */}
+          <div className="upcoming-events-section">
+            <h3 className="section-title">📅 Upcoming Hackathons</h3>
+            {hackathons.length === 0 ? (
+              <div className="empty-hacks-card">No registered upcoming hackathons. Visit the Ecosystem to register.</div>
+            ) : (
+              <div className="hackathons-list">
+                {hackathons.map(h => (
+                  <div key={h.id} className="hackathon-card-item" onClick={() => navigate("/ecosystem")}>
+                    <strong>{h.title}</strong>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                      <span>📅 {new Date(h.date).toLocaleDateString()}</span>
+                      <span style={{ color: "var(--primary)", fontWeight: "bold" }}>Registered</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+
       </div>
-    </div>
+    </motion.div>
   );
 }

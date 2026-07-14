@@ -247,6 +247,9 @@ const getDashboardStats = async (userId) => {
     };
   }
 
+  const projectsCount = await prisma.project.count({ where: { userId } });
+  const messagesCount = await prisma.message.count({ where: { senderId: userId } });
+
   return {
     profileCompletion,
     skillsCount,
@@ -261,6 +264,16 @@ const getDashboardStats = async (userId) => {
     recentActivity,
     codingSummary,
     adminStats,
+    projectsCount,
+    messagesCount,
+    userDetails: {
+      bio: user.bio,
+      githubUrl: user.githubUrl,
+      linkedinUrl: user.linkedinUrl,
+      hasSkills: user.skills.length > 0,
+      hasInterests: user.interests.length > 0,
+      hasProjects: projectsCount > 0
+    }
   };
 };
 

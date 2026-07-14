@@ -40,3 +40,13 @@ export const runCustomCode = async (code, language, customInput) => {
     throw Object.assign(err, { displayMessage: msg });
   }
 };
+
+export const getLatestSubmissions = async () => {
+  try {
+    const response = await api.get("/submissions/latest");
+    return response.data.data;
+  } catch (err) {
+    const msg = err.userMessage || err.response?.data?.message || err.message || "Could not load latest submissions.";
+    throw Object.assign(err, { displayMessage: msg });
+  }
+};

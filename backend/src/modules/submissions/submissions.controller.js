@@ -116,10 +116,29 @@ const getProblemSubmissionsHandler = async (req, res, next) => {
   }
 };
 
+const getLatestSubmissionsHandler = async (req, res, next) => {
+  try {
+    const submissions = await prisma.submission.findMany({
+      where: { userId: req.user.id },
+      include: {
+        problem: {
+          select: { title: true }
+        }
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5
+    });
+    return res.status(200).json({ success: true, data: submissions });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   runCodeHandler,
   runCustomTestCaseHandler,
   submitCodeHandler,
   getProblemSubmissionsHandler,
+  getLatestSubmissionsHandler
 };
 

@@ -20,7 +20,7 @@ const createProblemHandler = async (req, res, next) => {
 
 const getProblemsHandler = async (req, res, next) => {
   try {
-    const problems = await getAllProblems(req.user.role);
+    const problems = await getAllProblems(req.user.role, req.user.id);
     res.status(200).json({ success: true, data: problems });
   } catch (err) {
     next(err);

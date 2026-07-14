@@ -18,14 +18,14 @@ const createProblem = async (data) => {
   });
 };
 
-const getAllProblems = async (userRole) => {
+const getAllProblems = async (userRole, userId) => {
   const where = {};
   if (userRole !== "ADMIN") {
     where.status = "PUBLISHED";
     where.visibility = "PUBLIC";
   }
 
-  return prisma.problem.findMany({
+  const problems = await prisma.problem.findMany({
     where,
     select: {
       id: true,
@@ -36,10 +36,27 @@ const getAllProblems = async (userRole) => {
       status: true,
       visibility: true,
       createdAt: true,
+      submissions: {
+        where: { userId },
+        select: {
+          status: true
+        }
+      }
     },
     orderBy: {
       createdAt: "desc",
     },
+  });
+
+  return problems.map((p) => {
+    const subs = p.submissions || [];
+    const isSolved = subs.some((s) => s.status === "ACCEPTED");
+    const isAttempted = !isSolved && subs.length > 0;
+    const { submissions, ...rest } = p;
+    return {
+      ...rest,
+      solveStatus: isSolved ? "SOLVED" : (isAttempted ? "ATTEMPTED" : "UNSOLVED")
+    };
   });
 };
 
