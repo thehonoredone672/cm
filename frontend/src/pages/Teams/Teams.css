@@ -1,4 +1,6 @@
-/* Premium Teams Redesign */
+/* ================================================================
+   MODERN MONOCHROME SAAS TEAMS LIST STYLES
+   ================================================================ */
 
 .teams-page {
   max-width: 1200px;
@@ -6,307 +8,660 @@
   padding: 32px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 28px;
 }
 
-.teams-header {
+.teams-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* 1. Header Card */
+.teams-header-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 20px;
-}
-
-.teams-header h1 {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  margin: 0;
-}
-
-.teams-layout {
-  display: grid;
-  grid-template-columns: 2.2fr 1fr;
-  gap: 32px;
-}
-
-@media (max-width: 992px) {
-  .teams-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-.teams-main {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.teams-sidebar {
-  display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 24px;
-}
-
-/* Cards */
-.team-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--border);
+  padding: 24px 32px;
   border-radius: var(--radius-md);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition), box-shadow var(--transition);
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
-.team-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
-}
-
-.team-card__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.team-card__title {
-  font-size: 18px;
-  font-weight: 700;
+.teams-header-card h1 {
+  font-size: 26px;
+  font-weight: 800;
   color: var(--text-primary);
   margin: 0 0 6px 0;
+  letter-spacing: -0.5px;
 }
 
-.team-card__desc {
+.teams-header-card .subtitle {
   font-size: 14px;
   color: var(--text-secondary);
+  margin: 0;
+  max-width: 600px;
   line-height: 1.5;
-  margin: 0;
 }
 
-.team-card__meta {
+.header-meta {
   display: flex;
-  align-items: center;
-  gap: 20px;
-  font-size: 13px;
-  color: var(--text-secondary);
-  border-top: 1px solid var(--border-light);
-  padding-top: 16px;
-}
-
-.team-badge {
-  background: var(--primary-glow);
-  color: var(--primary);
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sidebar-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 24px;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
   gap: 20px;
 }
 
-.sidebar-card h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-group label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.form-group input,
-.form-group textarea {
-  padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-primary);
-  font-size: 14px;
-  width: 100%;
-}
-
-/* Details Page styling */
-.team-details-header {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 32px;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.team-details-header__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-}
-
-.join-code-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--background);
-  border: 1px dashed var(--border);
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  transition: border-color var(--transition-fast);
-}
-
-.join-code-container:hover {
-  border-color: var(--primary);
-}
-
-.join-code-label {
-  font-size: 11px;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-.join-code-value {
-  font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: 1px;
-}
-
-.members-section {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.members-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
-
-.member-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: var(--shadow-sm);
-  transition: transform var(--transition);
-}
-
-.member-card:hover {
-  transform: translateY(-2px);
-}
-
-.member-info {
+.meta-item {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.member-name {
-  font-weight: 600;
-  font-size: 15px;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.member-email {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.leader-tag {
-  background: var(--warning-glow);
-  color: var(--warning);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  font-size: 9px;
+.meta-item span {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
   font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.meta-item strong {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* 2. Statistics Grid */
+.stats-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.stats-dashboard-grid .stat-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color var(--transition-fast);
+}
+
+.stats-dashboard-grid .stat-card span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* Buttons */
-.btn-primary {
-  background: var(--primary);
-  color: white;
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
+.stats-dashboard-grid .stat-card strong {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.stats-dashboard-grid .stat-card.highlight strong {
+  color: var(--primary);
+}
+
+/* main layouts */
+.teams-main-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 28px;
+}
+
+@media (max-width: 900px) {
+  .teams-main-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.teams-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.teams-right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* SECTION 3: Quick Actions Card */
+.quick-actions-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  padding: 24px;
+  border-radius: var(--radius-md);
+}
+
+.quick-actions-card h3 {
   font-size: 14px;
-  text-align: center;
+  font-weight: 700;
+  margin: 0 0 16px 0;
 }
 
-.btn-primary:hover {
-  background: var(--primary-dark);
+.action-buttons-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.btn-primary-action {
+  width: 100%;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+.btn-primary-action:hover {
+  opacity: 0.9;
 }
 
-.btn-secondary {
+.join-team-inline-form {
+  display: flex;
+  gap: 8px;
+}
+
+.join-team-inline-form input {
+  flex: 1;
+  padding: 10px 14px;
+  background: var(--background);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 12px;
+}
+
+.join-team-inline-form button {
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.join-team-inline-form button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* SECTION 7: Received Invites */
+.invites-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  padding: 24px;
+  border-radius: var(--radius-md);
+}
+
+.invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.invite-item-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.invite-msg {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+
+.invite-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.invite-actions button {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.invite-actions .btn-accept {
+  background: #22c55e;
+  color: #fff;
+  border: none;
+}
+.invite-actions .btn-accept:hover {
+  background: #16a34a;
+}
+
+.invite-actions .btn-reject {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-primary);
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  font-size: 14px;
-  text-align: center;
 }
-
-.btn-secondary:hover {
+.invite-actions .btn-reject:hover {
   background: var(--border-light);
 }
 
-.btn-danger {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-primary);
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  font-size: 13px;
+/* SECTION 8: Recommended Teams */
+.recommended-teams-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  padding: 24px;
+  border-radius: var(--radius-md);
 }
 
-.btn-danger:hover {
-  background: var(--danger-glow);
-  border-color: var(--danger);
-  color: var(--danger);
+.rec-teams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rec-team-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.rec-team-item strong {
+  font-size: 13px;
+  color: var(--text-primary);
+  display: block;
+}
+
+.members-lbl {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.btn-join-rec {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.btn-join-rec:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* My Active Teams list */
+.teams-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.teams-section-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.available-search-input {
+  padding: 6px 14px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 20px;
+  outline: none;
+  font-size: 12px;
+  width: 200px;
+}
+
+.empty-teams-card {
+  text-align: center;
+  padding: 48px 24px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.empty-teams-card .icon {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.empty-teams-card h4 {
+  font-size: 15px;
+  color: var(--text-primary);
+  margin: 0 0 6px 0;
+}
+
+.empty-teams-card p {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.teams-grid-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.team-card-item {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color var(--transition-fast);
+}
+.team-card-item:hover {
+  border-color: var(--text-secondary);
+}
+
+.team-header-row {
+  display: flex;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.team-avatar-box {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: var(--border-light);
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.team-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+}
+
+.team-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.team-metadata-grid {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border-light);
+  padding-top: 10px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.code-badge {
+  font-family: monospace;
+  background: var(--border-light);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--primary);
+}
+
+.skills-chips-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.skill-chip {
+  font-size: 10px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.team-actions-row {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 12px;
+}
+
+.team-actions-row button {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-open-workspace {
+  background: var(--background);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+}
+.btn-open-workspace:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-toggle-recruitment {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text-secondary);
+}
+.btn-toggle-recruitment:hover {
+  border-color: var(--text-primary);
+  color: var(--text-primary);
+}
+
+.btn-delete-team {
+  background: transparent;
+  border: 1.5px solid #ef4444;
+  color: #ef4444;
+}
+.btn-delete-team:hover {
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Discovery browse list */
+.available-teams-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.available-team-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .available-team-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.available-team-card strong {
+  font-size: 14px;
+  color: var(--text-primary);
+  display: block;
+}
+
+.available-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 4px 0 6px 0;
+  line-height: 1.4;
+}
+
+.meta-details {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.btn-apply {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--background);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  align-self: center;
+}
+.btn-apply:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Modals */
+.create-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.create-modal-content {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+}
+
+.create-modal-content h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 0 0 20px 0;
+  letter-spacing: -0.3px;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.modal-form label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.modal-form input,
+.modal-form select,
+.modal-form textarea {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--background);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.modal-actions button {
+  flex: 1;
+  padding: 10px;
+}
+
+/* Skeletons */
+.teams-loading-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Kanban Board Column Layouts */
+.kanban-columns-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .kanban-columns-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kanban-column {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }

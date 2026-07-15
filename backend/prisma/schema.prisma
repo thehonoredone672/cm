@@ -72,18 +72,18 @@ model User {
   sentInvites     TeamInvite[] @relation("InviteSender")
   receivedInvites TeamInvite[] @relation("InviteReceiver")
 
-  teamsLed        Team[]       @relation("TeamLeader")
+  teamsLed        Team[]         @relation("TeamLeader")
   teamMemberships TeamMember[]
   submissions     Submission[]
   notifications   Notification[]
   projects        Project[]
 
-  isBlocked      Boolean   @default(false)
-  streak         Int       @default(0)
-  githubId       String?
+  isBlocked       Boolean              @default(false)
+  streak          Int                  @default(0)
+  githubId        String?
   leetcodeProfile String?
-  filedReports   Report[]  @relation("ReporterRelation")
-  badges         UserBadge[]
+  filedReports    Report[]             @relation("ReporterRelation")
+  badges          UserBadge[]
   posts           CommunityPost[]
   postLikes       PostLike[]
   comments        PostComment[]
@@ -91,7 +91,7 @@ model User {
   jobApplications JobApplication[]
 
   collegeId          String?
-  collegeRelation    College? @relation(fields: [collegeId], references: [id])
+  collegeRelation    College?               @relation(fields: [collegeId], references: [id])
   facultyProfile     FacultyProfile?
   mentorProfile      MentorProfile?
   companyProfile     CompanyProfile?
@@ -100,8 +100,12 @@ model User {
   driveApplications  CandidateApplication[]
   certificates       Certificate[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  teamAnnouncements TeamAnnouncement[]
+  teamTasks         TeamTask[]
+  teamFiles         TeamFile[]
+  teamActivities    TeamActivity[]
 }
 
 model Skill {
@@ -144,8 +148,8 @@ model UserInterest {
   user     User     @relation(fields: [userId], references: [id])
   interest Interest @relation(fields: [interestId], references: [id])
 
-  matchingWeight    Int      @default(1)
-  createdAt         DateTime @default(now())
+  matchingWeight Int      @default(1)
+  createdAt      DateTime @default(now())
 
   @@unique([userId, interestId])
 }
@@ -249,15 +253,27 @@ model TeamInvite {
 }
 
 model Team {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   name        String
   description String?
-  joinCode    String   @unique
+  joinCode    String       @unique
   leaderId    String
-  leader      User     @relation("TeamLeader", fields: [leaderId], references: [id])
+  leader      User         @relation("TeamLeader", fields: [leaderId], references: [id])
   members     TeamMember[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  isRecruiting      Boolean  @default(true)
+  maxMembers        Int      @default(5)
+  requiredSkills    String[]
+  requiredInterests String[]
+
+  announcements TeamAnnouncement[]
+  tasks         TeamTask[]
+  files         TeamFile[]
+  activities    TeamActivity[]
+  resources     TeamResource[]
+
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
   hackathonRegistrations HackathonRegistration[]
 }
 
@@ -288,9 +304,9 @@ model Problem {
   tags           String[]
   constraints    String?
   status         String          @default("PUBLISHED") // DRAFT, PUBLISHED
-  visibility     String          @default("PUBLIC")    // PUBLIC, PRIVATE
-  starterCode    Json            // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
-  examples       Json            // E.g. [{ input: "...", output: "...", explanation: "..." }]
+  visibility     String          @default("PUBLIC") // PUBLIC, PRIVATE
+  starterCode    Json // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
+  examples       Json // E.g. [{ input: "...", output: "...", explanation: "..." }]
   testCases      TestCase[]
   submissions    Submission[]
   dailyChallenge DailyChallenge?
@@ -353,14 +369,14 @@ model Project {
 }
 
 model Report {
-  id          String   @id @default(uuid())
-  reporterId  String
-  reporter    User     @relation("ReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade)
-  targetType  String   // USER, TEAM, MESSAGE
-  targetId    String
-  reason      String
-  status      String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  reporterId String
+  reporter   User     @relation("ReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType String // USER, TEAM, MESSAGE
+  targetId   String
+  reason     String
+  status     String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
+  createdAt  DateTime @default(now())
 }
 
 model Announcement {
@@ -377,12 +393,12 @@ model SystemConfig {
 }
 
 model Hackathon {
-  id            String   @id @default(uuid())
+  id            String                  @id @default(uuid())
   title         String
   description   String
   date          DateTime
   link          String
-  createdAt     DateTime @default(now())
+  createdAt     DateTime                @default(now())
   registrations HackathonRegistration[]
 }
 
@@ -392,79 +408,83 @@ model UserBadge {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   badgeName String
   earnedAt  DateTime @default(now())
+
   @@unique([userId, badgeName])
 }
 
 model CommunityPost {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   title     String
   content   String
   tags      String[]
   likes     PostLike[]
   comments  PostComment[]
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
 }
 
 model PostLike {
-  id        String   @id @default(uuid())
-  postId    String
-  post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String        @id @default(uuid())
+  postId String
+  post   CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([postId, userId])
 }
 
 model PostComment {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   postId    String
   post      CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
   content   String
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
 }
 
 model LearningResource {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  category    String   // Roadmaps, Tutorials, Articles
-  link        String
-  createdAt   DateTime @default(now())
+  id           String               @id @default(uuid())
+  title        String
+  description  String
+  category     String // Roadmaps, Tutorials, Articles
+  link         String
+  createdAt    DateTime             @default(now())
   bookmarkedBy BookmarkedResource[]
 }
 
 model BookmarkedResource {
-  id         String   @id @default(uuid())
+  id         String           @id @default(uuid())
   userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   resourceId String
   resource   LearningResource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+
   @@unique([userId, resourceId])
 }
 
 model JobListing {
-  id          String   @id @default(uuid())
+  id          String           @id @default(uuid())
   title       String
   company     String
   description String
   location    String
-  type        String   // Internship, Job
+  type        String // Internship, Job
   link        String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime         @default(now())
   appliedJobs JobApplication[]
 }
 
 model JobApplication {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobId     String
   job       JobListing @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  status    String   @default("PENDING") // PENDING, SAVED, APPLIED, INTERVIEWING, REJECTED
-  createdAt DateTime @default(now())
+  status    String     @default("PENDING") // PENDING, SAVED, APPLIED, INTERVIEWING, REJECTED
+  createdAt DateTime   @default(now())
+
   @@unique([userId, jobId])
 }
 
@@ -476,47 +496,48 @@ model DailyChallenge {
 }
 
 model College {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  domain    String?  
-  createdAt DateTime @default(now())
-  users     User[]   
+  id        String             @id @default(uuid())
+  name      String             @unique
+  domain    String?
+  createdAt DateTime           @default(now())
+  users     User[]
   drives    RecruitmentDrive[]
 }
 
 model FacultyProfile {
-  id         String   @id @default(uuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String  @id @default(uuid())
+  userId     String  @unique
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   department String
   title      String
-  verified   Boolean  @default(false)
+  verified   Boolean @default(false)
 }
 
 model HackathonRegistration {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   hackathonId  String
   hackathon    Hackathon @relation(fields: [hackathonId], references: [id], onDelete: Cascade)
   teamId       String
-  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team         Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   projectTitle String?
   projectDesc  String?
   projectLink  String?
   score        Float?
-  isWinner     Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  isWinner     Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
   @@unique([hackathonId, teamId])
 }
 
 model Event {
-  id          String   @id @default(uuid())
-  title       String
-  description String
-  type        String   // WORKSHOP, WEBINAR, TECH_EVENT
-  date        DateTime
-  link        String?
-  speaker     String?
-  createdAt   DateTime @default(now())
+  id            String              @id @default(uuid())
+  title         String
+  description   String
+  type          String // WORKSHOP, WEBINAR, TECH_EVENT
+  date          DateTime
+  link          String?
+  speaker       String?
+  createdAt     DateTime            @default(now())
   registrations EventRegistration[]
 }
 
@@ -528,68 +549,70 @@ model EventRegistration {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   attended  Boolean  @default(false)
   createdAt DateTime @default(now())
+
   @@unique([eventId, userId])
 }
 
 model MentorProfile {
-  id         String   @id @default(uuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title      String
-  company    String
-  bio        String
-  skills     String[]
-  rating     Float    @default(5.0)
-  bookings   MentorshipBooking[]
+  id       String              @id @default(uuid())
+  userId   String              @unique
+  user     User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title    String
+  company  String
+  bio      String
+  skills   String[]
+  rating   Float               @default(5.0)
+  bookings MentorshipBooking[]
 }
 
 model MentorshipBooking {
-  id              String   @id @default(uuid())
+  id              String        @id @default(uuid())
   mentorProfileId String
   mentor          MentorProfile @relation(fields: [mentorProfileId], references: [id], onDelete: Cascade)
   studentId       String
-  student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student         User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
   scheduledAt     DateTime
-  status          String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
-  rating          Int?     
+  status          String        @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  rating          Int?
   feedback        String?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime      @default(now())
 }
 
 model CompanyProfile {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id          String             @id @default(uuid())
+  name        String             @unique
   description String
   website     String
   logoUrl     String?
-  userId      String   @unique 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String             @unique
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   drives      RecruitmentDrive[]
 }
 
 model RecruitmentDrive {
-  id          String   @id @default(uuid())
-  companyId   String
-  company     CompanyProfile @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  collegeId   String?
-  college     College? @relation(fields: [collegeId], references: [id])
-  title       String   
-  status      String   @default("UPCOMING") // UPCOMING, ACTIVE, COMPLETED
-  date        DateTime
-  createdAt   DateTime @default(now())
-  candidates  CandidateApplication[]
+  id         String                 @id @default(uuid())
+  companyId  String
+  company    CompanyProfile         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  collegeId  String?
+  college    College?               @relation(fields: [collegeId], references: [id])
+  title      String
+  status     String                 @default("UPCOMING") // UPCOMING, ACTIVE, COMPLETED
+  date       DateTime
+  createdAt  DateTime               @default(now())
+  candidates CandidateApplication[]
 }
 
 model CandidateApplication {
-  id              String   @id @default(uuid())
-  driveId         String
-  drive           RecruitmentDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status          String   @default("APPLIED") // APPLIED, SCREENED, ASSESSMENT_PENDING, INTERVIEWING, OFFERED, REJECTED
-  score           Int?     
-  offerLetterUrl  String?
-  createdAt       DateTime @default(now())
+  id             String           @id @default(uuid())
+  driveId        String
+  drive          RecruitmentDrive @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         String           @default("APPLIED") // APPLIED, SCREENED, ASSESSMENT_PENDING, INTERVIEWING, OFFERED, REJECTED
+  score          Int?
+  offerLetterUrl String?
+  createdAt      DateTime         @default(now())
+
   @@unique([driveId, userId])
 }
 
@@ -597,11 +620,68 @@ model Certificate {
   id               String   @id @default(uuid())
   userId           String
   user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title            String   
-  issuedBy         String   
+  title            String
+  issuedBy         String
   verificationCode String   @unique
   qrCodeUrl        String?
   createdAt        DateTime @default(now())
 }
 
+model TeamAnnouncement {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  isPinned  Boolean  @default(false)
+  creatorId String
+  creator   User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
 
+model TeamTask {
+  id          String    @id @default(uuid())
+  teamId      String
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  status      String    @default("TODO") // TODO, IN_PROGRESS, COMPLETED
+  priority    String    @default("MEDIUM") // LOW, MEDIUM, HIGH
+  dueDate     DateTime?
+  assigneeId  String?
+  assignee    User?     @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+}
+
+model TeamFile {
+  id           String   @id @default(uuid())
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  name         String
+  fileUrl      String
+  fileSize     Int
+  fileType     String
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model TeamActivity {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  details   String
+  createdAt DateTime @default(now())
+}
+
+model TeamResource {
+  id        String   @id @default(uuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  title     String
+  url       String
+  createdAt DateTime @default(now())
+}

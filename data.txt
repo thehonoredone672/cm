@@ -44,3 +44,20 @@ sarah-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxYmZlM2RkMC05MjZjLTQ1Z
         }
     ]
 }
+
+=== STARTING WORKSPACE SUBRESOURCES INTEGRATION TEST ===
+✓ Logged in as student1@codematch.com. Token acquired.
+✓ Team created successfully: Telemetry Workspace Team (5e696acf-4b51-4244-ba0f-162375ffbb09)
+✓ Posted announcement: "Sprint 1 Telemetry Launch"
+✓ Created task card: "Verify Prisma Migration"
+✓ Uploaded file: "architecture-specifications.pdf"
+✓ Pinned resource: "GitHub Repository"
+✓ Successfully retrieved team details containing workspace sub-resources:
+  - Announcements Count: 1
+  - Tasks Count: 1
+  - Files Count: 1
+  - Pinned Links Count: 1
+  - Activity Timeline Count: 3
+✓ Verification Success: Sub-resources match perfectly in database retrieval.
+✓ Cleanup: Removed team workspace from database.
+=== ALL WORKSPACE TESTS PASSED SUCCESSFULLY ===

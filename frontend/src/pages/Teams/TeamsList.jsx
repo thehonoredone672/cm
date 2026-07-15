@@ -1,217 +1,505 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { getTeams, createTeam, joinTeam } from "../../services/teamService";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  getTeams, 
+  getAllTeams, 
+  createTeam, 
+  joinTeam, 
+  deleteTeam, 
+  toggleRecruitment 
+} from "../../services/teamService";
+import { getReceivedInvites, acceptInvite, rejectInvite } from "../../services/teamInviteService";
+import { useAuth } from "../../context/AuthContext";
 import "./Teams.css";
 
-export default function TeamsList() {
-  const [teams, setTeams] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [createName, setCreateName] = useState("");
-  const [createDesc, setCreateDesc] = useState("");
-  const [joinCode, setJoinCode] = useState("");
-  const [createLoading, setCreateLoading] = useState(false);
-  const [joinLoading, setJoinLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+// Framer Motion Animation Variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 }
+  }
+};
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 15 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 15 }
+  }
+};
+
+export default function TeamsList() {
+  const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Core Data States
+  const [myTeams, setMyTeams] = useState([]);
+  const [allTeams, setAllTeams] = useState([]);
+  const [invites, setInvites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+
+  // Form states
+  const [search, setSearch] = useState("");
+  const [createName, setCreateName] = useState("");
+  const [createDesc, setCreateDesc] = useState("");
+  const [createSkills, setCreateSkills] = useState("");
+  const [createInterests, setCreateInterests] = useState("");
+  const [createMaxMembers, setCreateMaxMembers] = useState(5);
+  const [joinCodeInput, setJoinCodeInput] = useState("");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   useEffect(() => {
-    fetchTeams();
+    loadTeamsData();
   }, []);
 
-  const fetchTeams = async () => {
+  const loadTeamsData = async () => {
     try {
       setLoading(true);
-      const data = await getTeams();
-      setTeams(data);
+      const [mine, all, invitesData] = await Promise.all([
+        getTeams(),
+        getAllTeams(),
+        getReceivedInvites()
+      ]);
+      setMyTeams(mine);
+      setAllTeams(all);
+      setInvites(invitesData.filter(i => i.status === "PENDING"));
     } catch (err) {
       console.error(err);
-      setErrorMessage("Failed to fetch teams.");
+      triggerToast("Failed to sync team records.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCreateTeam = async (e) => {
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Autocomplete / Filtered Available Teams
+  const availableTeams = useMemo(() => {
+    return allTeams.filter(t => 
+      !myTeams.some(myT => myT.id === t.id) &&
+      t.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [allTeams, myTeams, search]);
+
+  // Recommended Teams based on user properties
+  const recommendedTeams = useMemo(() => {
+    return allTeams.filter(t => {
+      const isAlreadyIn = myTeams.some(myT => myT.id === t.id);
+      if (isAlreadyIn) return false;
+
+      // Match skills overlap
+      const userSkills = user?.skills?.map(s => s.skill.name.toLowerCase()) || [];
+      const teamSkills = t.requiredSkills?.map(s => s.toLowerCase()) || [];
+      const common = userSkills.filter(s => teamSkills.includes(s));
+      return common.length > 0;
+    }).slice(0, 3);
+  }, [allTeams, myTeams, user]);
+
+  // Statistics Computations
+  const stats = useMemo(() => {
+    const joined = myTeams.length;
+    const created = myTeams.filter(t => t.leaderId === user?.id).length;
+    const totalInvites = invites.length;
+    
+    return { joined, created, totalInvites };
+  }, [myTeams, invites, user]);
+
+  const handleCreateTeamSubmit = async (e) => {
     e.preventDefault();
     if (!createName.trim()) return;
-
+    setSaving(true);
     try {
-      setCreateLoading(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-      const newTeam = await createTeam({
+      const skillsArray = createSkills.split(",").map(s => s.trim()).filter(Boolean);
+      const interestsArray = createInterests.split(",").map(i => i.trim()).filter(Boolean);
+
+      await createTeam({
         name: createName.trim(),
-        description: createDesc.trim() || undefined,
+        description: createDesc.trim(),
+        maxMembers: Number(createMaxMembers),
+        requiredSkills: skillsArray,
+        requiredInterests: interestsArray
       });
+
+      triggerToast("New team workspace launched.");
       setCreateName("");
       setCreateDesc("");
-      setSuccessMessage(`Team "${newTeam.name}" created successfully!`);
-      fetchTeams();
+      setCreateSkills("");
+      setCreateInterests("");
+      setCreateMaxMembers(5);
+      setShowCreateModal(false);
+      loadTeamsData();
     } catch (err) {
-      console.error(err);
-      setErrorMessage(err.response?.data?.message || "Failed to create team.");
+      triggerToast(err.response?.data?.message || "Failed to create team.");
     } finally {
-      setCreateLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleJoinTeam = async (e) => {
+  const handleJoinTeamSubmit = async (e) => {
     e.preventDefault();
-    if (!joinCode.trim()) return;
-
+    if (!joinCodeInput.trim()) return;
+    setSaving(true);
     try {
-      setJoinLoading(true);
-      setErrorMessage("");
-      setSuccessMessage("");
-      const membership = await joinTeam(joinCode.trim().toUpperCase());
-      setJoinCode("");
-      setSuccessMessage(`Successfully joined team "${membership.team.name}"!`);
-      fetchTeams();
+      await joinTeam(joinCodeInput.trim().toUpperCase());
+      triggerToast("Successfully joined team workspace.");
+      setJoinCodeInput("");
+      loadTeamsData();
     } catch (err) {
-      console.error(err);
-      setErrorMessage(err.response?.data?.message || "Failed to join team.");
+      triggerToast(err.response?.data?.message || "Invalid join code.");
     } finally {
-      setJoinLoading(false);
+      setSaving(false);
     }
   };
 
-  const [searchQuery, setSearchQuery] = useState("");
+  const handleToggleRecruitment = async (teamId, currentStatus) => {
+    try {
+      await toggleRecruitment(teamId, !currentStatus);
+      triggerToast(`Recruitment ${!currentStatus ? "opened" : "closed"}.`);
+      loadTeamsData();
+    } catch (e) {
+      triggerToast("Failed to toggle recruitment status.");
+    }
+  };
 
-  const filteredTeams = teams.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleDeleteTeam = async (teamId) => {
+    if (!window.confirm("Are you sure you want to delete this team? All channels and message logs will be permanently deleted.")) return;
+    try {
+      await deleteTeam(teamId);
+      triggerToast("Team deleted successfully.");
+      loadTeamsData();
+    } catch (e) {
+      triggerToast("Failed to delete team.");
+    }
+  };
+
+  const handleAcceptInvite = async (inviteId) => {
+    try {
+      await acceptInvite(inviteId);
+      triggerToast("Invitation accepted. Connected to chat workspace.");
+      loadTeamsData();
+    } catch (e) {
+      triggerToast("Failed to accept invite.");
+    }
+  };
+
+  const handleRejectInvite = async (inviteId) => {
+    try {
+      await rejectInvite(inviteId);
+      triggerToast("Invitation declined.");
+      loadTeamsData();
+    } catch (e) {
+      triggerToast("Failed to decline invite.");
+    }
+  };
 
   return (
-    <div className="teams-page">
-      <div className="teams-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-        <h1>My Teams</h1>
-        
-        {/* Team Search Input */}
-        <input
-          type="text"
-          placeholder="🔍 Search teams by name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            padding: "8px 16px",
-            borderRadius: "20px",
-            border: "1.5px solid var(--border)",
-            background: "var(--background)",
-            color: "var(--text-primary)",
-            fontSize: "13px",
-            outline: "none",
-            width: "240px"
-          }}
-        />
+    <motion.div 
+      className="teams-page"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div 
+            className="teams-toast"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <span>👥 {toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* SECTION 1: Header */}
+      <div className="teams-header-card">
+        <div>
+          <h1>My Teams Workspaces</h1>
+          <p className="subtitle">Form teams, configure required skills stacks, and manage recruitment discoverability parameters.</p>
+        </div>
+        <div className="header-meta">
+          <div className="meta-item">
+            <span>Joined Workspaces</span>
+            <strong>{stats.joined} Teams</strong>
+          </div>
+          <div className="meta-item">
+            <span>Created Workspaces</span>
+            <strong>{stats.created} Teams</strong>
+          </div>
+        </div>
       </div>
 
-      {successMessage && <div style={{ background: "var(--success-glow)", border: "1px solid var(--success)", color: "var(--success)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{successMessage}</div>}
-      {errorMessage && <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{errorMessage}</div>}
-
-      <div className="teams-layout">
-        <div className="teams-main">
-          {loading ? (
-            <div className="team-card skeleton" style={{ height: "150px" }}></div>
-          ) : filteredTeams.length === 0 ? (
-            <div style={{ background: "var(--surface)", border: "1px dashed var(--border)", borderRadius: "var(--radius-md)", padding: "48px 24px", textAlign: "center", color: "var(--text-secondary)" }}>
-              <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: "0 auto 16px auto", opacity: 0.5 }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
-              </svg>
-              <h3>No teams match search</h3>
-              <p>Create a team or join an existing one using a code to start collaborating!</p>
-            </div>
-          ) : (
-            filteredTeams.map((team) => (
-              <div 
-                key={team.id} 
-                className="team-card"
-                onClick={() => navigate(`/teams/${team.id}`)}
-              >
-                <div className="team-card__header">
-                  <div>
-                    <h3 className="team-card__title">{team.name}</h3>
-                    <p className="team-card__desc">{team.description || "No description provided."}</p>
-                  </div>
-                  <span className="team-badge">Member</span>
-                </div>
-                <div className="team-card__meta">
-                  <span>Leader: <strong>{team.leader.name}</strong></span>
-                  <span>Members: <strong>{team._count?.members || 1}</strong></span>
-                </div>
-              </div>
-            ))
-          )}
+      {/* SECTION 2: Statistics */}
+      <div className="stats-dashboard-grid">
+        <div className="stat-card">
+          <span>Joined Workspaces</span>
+          <strong>{stats.joined} Active</strong>
         </div>
+        <div className="stat-card">
+          <span>Created Lead Workspaces</span>
+          <strong>{stats.created} Led</strong>
+        </div>
+        <div className="stat-card">
+          <span>Incoming Collaborations</span>
+          <strong>{stats.totalInvites} Pending</strong>
+        </div>
+        <div className="stat-card highlight">
+          <span>Open recruitment hubs</span>
+          <strong>{allTeams.filter(t => t.isRecruiting).length} Recruiting</strong>
+        </div>
+      </div>
 
-        <div className="teams-sidebar">
-          {/* Join Team Card */}
-          <div className="sidebar-card">
-            <h3>Join a Team</h3>
-            <form onSubmit={handleJoinTeam} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="Enter Join Code (e.g. AB12CD)"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value)}
+      {/* Main Split grid */}
+      <div className="teams-main-layout">
+        
+        {/* LEFT COLUMN: Actions, Recommendations, Invites */}
+        <div className="teams-left-column">
+          
+          {/* SECTION 3: Quick Actions */}
+          <div className="quick-actions-card">
+            <h3 className="section-title">⚡ Quick Action Triggers</h3>
+            <div className="action-buttons-stack">
+              <button className="btn-primary-action" onClick={() => setShowCreateModal(true)}>
+                + Create Workspace
+              </button>
+              
+              <form onSubmit={handleJoinTeamSubmit} className="join-team-inline-form">
+                <input 
+                  type="text" 
+                  value={joinCodeInput}
+                  onChange={(e) => setJoinCodeInput(e.target.value)}
+                  placeholder="Enter Join Code e.g. XY78WZ" 
                   style={{ textTransform: "uppercase" }}
                   required
                 />
-              </div>
-              <button 
-                type="submit" 
-                className="btn-primary" 
-                disabled={joinLoading || !joinCode.trim()}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-              >
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                {joinLoading ? "Joining..." : "Join"}
-              </button>
-            </form>
+                <button type="submit" disabled={saving}>Join Team</button>
+              </form>
+            </div>
           </div>
 
-          {/* Create Team Card */}
-          <div className="sidebar-card">
-            <h3>Create a Team</h3>
-            <form onSubmit={handleCreateTeam} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              <div className="form-group">
-                <label>Team Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter team name"
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                  required
-                />
+          {/* SECTION 7: Invitations received */}
+          {invites.length > 0 && (
+            <div className="invites-card">
+              <h3 className="section-title">✉ Received Invitations</h3>
+              <div className="invites-list">
+                {invites.map(invite => (
+                  <div key={invite.id} className="invite-item-row">
+                    <div>
+                      <strong>Invite from {invite.sender?.name}</strong>
+                      <p className="invite-msg">{invite.message || "Wants to collaborate on project builds."}</p>
+                    </div>
+                    <div className="invite-actions">
+                      <button className="btn-accept" onClick={() => handleAcceptInvite(invite.id)}>Accept</button>
+                      <button className="btn-reject" onClick={() => handleRejectInvite(invite.id)}>Decline</button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="form-group">
-                <label>Description (Optional)</label>
-                <textarea
-                  placeholder="What is your team working on?"
-                  value={createDesc}
-                  onChange={(e) => setCreateDesc(e.target.value)}
-                  rows="3"
-                />
-              </div>
-              <button 
-                type="submit" 
-                className="btn-primary" 
-                disabled={createLoading || !createName.trim()}
-                style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-              >
-                <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                {createLoading ? "Creating..." : "Create Team"}
-              </button>
-            </form>
+            </div>
+          )}
+
+          {/* SECTION 8: Recommended Teams */}
+          <div className="recommended-teams-card">
+            <h3 className="section-title">👥 Suggested Teams</h3>
+            <div className="rec-teams-list">
+              {recommendedTeams.length === 0 ? (
+                <span className="muted-text">No recommendations match your current skills tags.</span>
+              ) : (
+                recommendedTeams.map(t => (
+                  <div key={t.id} className="rec-team-item">
+                    <div>
+                      <strong>{t.name}</strong>
+                      <span className="members-lbl">{t._count?.members || 1} / {t.maxMembers || 5} Members</span>
+                    </div>
+                    <button className="btn-join-rec" onClick={() => triggerToast(`Use join code to join ${t.name}`)}>View</button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
+
         </div>
+
+        {/* RIGHT COLUMN: My Teams & Available Teams */}
+        <div className="teams-right-column">
+          
+          {/* SECTION 4: My Teams */}
+          <div className="teams-section-header">
+            <h3>My Active Teams ({myTeams.length})</h3>
+          </div>
+
+          {myTeams.length === 0 ? (
+            <div className="empty-teams-card">
+              <span className="icon">👥</span>
+              <h4>No active workspaces</h4>
+              <p>Form a team workspace or enter a code to join your team's workspace.</p>
+            </div>
+          ) : (
+            <motion.div 
+              className="teams-grid-list"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {myTeams.map(team => {
+                const isLeader = team.leaderId === user?.id;
+                
+                return (
+                  <motion.div 
+                    key={team.id} 
+                    className="team-card-item"
+                    variants={cardVariants}
+                  >
+                    <div className="team-header-row" onClick={() => navigate(`/teams/${team.id}`)}>
+                      <div className="team-avatar-box">
+                        {team.name ? team.name[0].toUpperCase() : "T"}
+                      </div>
+                      <div>
+                        <h4 className="team-title">{team.name}</h4>
+                        <p className="team-desc">{team.description || "No project description statement configured."}</p>
+                      </div>
+                    </div>
+
+                    <div className="team-metadata-grid">
+                      <span>Leader: <strong>{team.leader?.name}</strong></span>
+                      <span>Members: <strong>{team._count?.members || 1} / {team.maxMembers || 5}</strong></span>
+                      <span>Join Code: <strong className="code-badge">{team.joinCode}</strong></span>
+                    </div>
+
+                    {/* Required skills chips */}
+                    {team.requiredSkills && team.requiredSkills.length > 0 && (
+                      <div className="skills-chips-row">
+                        {team.requiredSkills.map(s => (
+                          <span key={s} className="skill-chip">{s}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="team-actions-row">
+                      <button className="btn-open-workspace" onClick={() => navigate(`/teams/${team.id}`)}>
+                        Open Workspace
+                      </button>
+
+                      {isLeader && (
+                        <>
+                          <button className="btn-toggle-recruitment" onClick={() => handleToggleRecruitment(team.id, team.isRecruiting)}>
+                            {team.isRecruiting ? "Close Recruitment" : "Open Recruitment"}
+                          </button>
+                          <button className="btn-delete-team" onClick={() => handleDeleteTeam(team.id)}>
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+
+          {/* SECTION 5: Available Teams (Discovery Browse) */}
+          <div className="teams-section-header" style={{ marginTop: "24px" }}>
+            <h3>Discover Available Teams</h3>
+            <input 
+              type="text" 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              placeholder="Search available teams..." 
+              className="available-search-input"
+            />
+          </div>
+
+          <div className="available-teams-grid">
+            {availableTeams.length === 0 ? (
+              <span className="muted-text" style={{ fontSize: "12px" }}>No other recruiting teams found matching search.</span>
+            ) : (
+              availableTeams.map(team => (
+                <div key={team.id} className="available-team-card">
+                  <div>
+                    <strong>{team.name}</strong>
+                    <p className="available-desc">{team.description}</p>
+                    <div className="meta-details">
+                      <span>Creator: {team.leader?.name}</span>
+                      <span>Members: {team._count?.members || 1} / {team.maxMembers}</span>
+                    </div>
+                    {team.requiredSkills && team.requiredSkills.length > 0 && (
+                      <div className="skills-chips-row" style={{ marginTop: "8px" }}>
+                        {team.requiredSkills.map(s => (
+                          <span key={s} className="skill-chip">{s}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button className="btn-apply" onClick={() => {
+                    setJoinCodeInput(team.joinCode);
+                    const el = document.querySelector(".join-team-inline-form input");
+                    el?.scrollIntoView({ behavior: "smooth" });
+                  }}>Apply / Join</button>
+                </div>
+              ))
+            )}
+          </div>
+
+        </div>
+
       </div>
-    </div>
+
+      {/* CREATE TEAM MODAL */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="create-modal-overlay">
+            <motion.div 
+              className="create-modal-content"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+            >
+              <h3>Launch Team Workspace</h3>
+              <form onSubmit={handleCreateTeamSubmit} className="modal-form">
+                <div>
+                  <label>Team Name</label>
+                  <input type="text" value={createName} onChange={(e) => setCreateName(e.target.value)} required />
+                </div>
+                <div>
+                  <label>Project Description</label>
+                  <textarea rows="3" value={createDesc} onChange={(e) => setCreateDesc(e.target.value)} />
+                </div>
+                <div className="form-group-row">
+                  <div>
+                    <label>Required Skills (comma separated)</label>
+                    <input type="text" value={createSkills} onChange={(e) => setCreateSkills(e.target.value)} placeholder="React, Python" />
+                  </div>
+                  <div>
+                    <label>Required Interests (comma separated)</label>
+                    <input type="text" value={createInterests} onChange={(e) => setCreateInterests(e.target.value)} placeholder="AI, Cloud" />
+                  </div>
+                </div>
+                <div>
+                  <label>Maximum Member Count</label>
+                  <input type="number" min="2" max="15" value={createMaxMembers} onChange={(e) => setCreateMaxMembers(Number(e.target.value))} />
+                </div>
+
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary" disabled={saving}>
+                    {saving ? "Launching..." : "Launch Team"}
+                  </button>
+                  <button type="button" className="btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </motion.div>
   );
 }

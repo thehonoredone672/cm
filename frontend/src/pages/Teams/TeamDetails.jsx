@@ -1,6 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getTeamDetails, leaveTeam, removeMember, updateTeam, updateMemberRole, inviteToTeamByEmail } from "../../services/teamService";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  getTeamDetails, 
+  leaveTeam, 
+  removeMember, 
+  updateTeam, 
+  updateMemberRole, 
+  inviteToTeamByEmail,
+  createTeamAnnouncement,
+  deleteTeamAnnouncement,
+  createTeamTask,
+  updateTeamTask,
+  deleteTeamTask,
+  createTeamFile,
+  deleteTeamFile,
+  createTeamResource,
+  deleteTeamResource
+} from "../../services/teamService";
 import { useAuth } from "../../context/AuthContext";
 import "./Teams.css";
 
@@ -9,20 +26,41 @@ export default function TeamDetails() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Core Data States
   const [team, setTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  
+
+  // Edit / Settings Modal States
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
-  const [updateLoading, setUpdateLoading] = useState(false);
+  const [editSkills, setEditSkills] = useState("");
+  const [editInterests, setEditInterests] = useState("");
+  const [editMaxMembers, setEditMaxMembers] = useState(5);
   const [copied, setCopied] = useState(false);
 
-  // Invite Form State
+  // Sub-resource builders
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteLoading, setInviteLoading] = useState(false);
+  const [annTitle, setAnnTitle] = useState("");
+  const [annContent, setAnnContent] = useState("");
+  
+  const [taskTitle, setTaskTitle] = useState("");
+  const [taskDesc, setTaskDesc] = useState("");
+  const [taskPriority, setTaskPriority] = useState("MEDIUM");
+  const [taskAssignee, setTaskAssignee] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState("");
+
+  const [fileName, setFileName] = useState("");
+  const [fileType, setFileType] = useState("PDF");
+  const [fileSize, setFileSize] = useState(2); // MB
+
+  const [resourceTitle, setResourceTitle] = useState("");
+  const [resourceLink, setResourceLink] = useState("");
+
+  // Tabs status
+  const [activeTab, setActiveTab] = useState("MEMBERS"); // MEMBERS, TASKS, ANNOUNCEMENTS, FILES, LOGS
 
   useEffect(() => {
     fetchTeamDetails();
@@ -35,126 +73,270 @@ export default function TeamDetails() {
       setTeam(data);
       setEditName(data.name);
       setEditDesc(data.description || "");
+      setEditSkills(data.requiredSkills?.join(", ") || "");
+      setEditInterests(data.requiredInterests?.join(", ") || "");
+      setEditMaxMembers(data.maxMembers || 5);
     } catch (err) {
       console.error(err);
-      setErrorMessage(err.response?.data?.message || "Failed to load team details.");
+      setErrorMessage("Failed to load workspace details.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const triggerToast = (msg, isError = false) => {
+    if (isError) setErrorMessage(msg);
+    else setSuccessMessage(msg);
+    setTimeout(() => {
+      setSuccessMessage("");
+      setErrorMessage("");
+    }, 3500);
   };
 
   const handleCopyCode = () => {
     if (!team) return;
     navigator.clipboard.writeText(team.joinCode);
     setCopied(true);
-    setSuccessMessage("Join code copied to clipboard!");
-    setTimeout(() => {
-      setCopied(false);
-      setSuccessMessage("");
-    }, 3000);
+    triggerToast("Workspace Join Code copied!");
+    setTimeout(() => setCopied(false), 3000);
   };
 
   const handleLeaveTeam = async () => {
     if (!window.confirm("Are you sure you want to leave this team?")) return;
-
     try {
       await leaveTeam(id);
       navigate("/teams");
     } catch (err) {
-      console.error(err);
-      setErrorMessage(err.response?.data?.message || "Failed to leave team.");
+      triggerToast("Failed to leave team workspace.", true);
     }
   };
 
   const handleRemoveMember = async (memberUserId) => {
-    if (!window.confirm("Are you sure you want to remove this member from the team?")) return;
-
+    if (!window.confirm("Remove this member from workspace?")) return;
     try {
       await removeMember(id, memberUserId);
-      setSuccessMessage("Member removed successfully.");
+      triggerToast("Member removed from workspace.");
       fetchTeamDetails();
     } catch (err) {
-      console.error(err);
-      setErrorMessage(err.response?.data?.message || "Failed to remove member.");
+      triggerToast("Failed to remove member.", true);
     }
   };
 
-  const handleUpdateTeam = async (e) => {
+  const handleUpdateTeamSettings = async (e) => {
     e.preventDefault();
-    if (!editName.trim()) return;
-
     try {
-      setUpdateLoading(true);
-      setErrorMessage("");
-      const updated = await updateTeam(id, {
+      const skillsArray = editSkills.split(",").map(s => s.trim()).filter(Boolean);
+      const interestsArray = editInterests.split(",").map(i => i.trim()).filter(Boolean);
+
+      await updateTeam(id, {
         name: editName.trim(),
-        description: editDesc.trim() || "",
+        description: editDesc.trim(),
+        maxMembers: Number(editMaxMembers),
+        requiredSkills: skillsArray,
+        requiredInterests: interestsArray
       });
-      setTeam(prev => ({
-        ...prev,
-        name: updated.name,
-        description: updated.description,
-      }));
+
+      triggerToast("Workspace settings updated.");
       setEditMode(false);
-      setSuccessMessage("Team settings updated successfully.");
-      setTimeout(() => setSuccessMessage(""), 3000);
+      fetchTeamDetails();
     } catch (err) {
-      console.error(err);
-      setErrorMessage(err.response?.data?.message || "Failed to update team.");
-    } finally {
-      setUpdateLoading(false);
+      triggerToast("Failed to update workspace.", true);
     }
   };
 
-  const handleInvite = async (e) => {
+  const handleSendInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail.trim()) return;
     try {
-      setInviteLoading(true);
-      setErrorMessage("");
-      setSuccessMessage("");
       await inviteToTeamByEmail(id, inviteEmail.trim());
-      setSuccessMessage(`Collaboration invite triggered to "${inviteEmail}"!`);
+      triggerToast(`Invite triggered successfully to "${inviteEmail}"`);
       setInviteEmail("");
-      fetchTeamDetails();
     } catch (err) {
-      setErrorMessage(err.response?.data?.message || "Failed to invite teammate.");
-    } finally {
-      setInviteLoading(false);
+      triggerToast("Failed to transmit invite.", true);
     }
   };
 
+  // Roles promotion
   const handleRoleChange = async (userId, currentRole) => {
     const newRole = currentRole === "ADMIN" ? "MEMBER" : "ADMIN";
-    const actionName = currentRole === "ADMIN" ? "demote" : "promote";
-    if (!window.confirm(`Are you sure you want to ${actionName} this member?`)) return;
-
     try {
-      setErrorMessage("");
-      setSuccessMessage("");
       await updateMemberRole(id, userId, newRole);
-      setSuccessMessage("Member role updated successfully.");
+      triggerToast("Member workspace privileges updated.");
       fetchTeamDetails();
-    } catch (err) {
-      setErrorMessage(err.response?.data?.message || "Failed to change member role.");
+    } catch (e) {
+      triggerToast("Failed to update member role.", true);
     }
   };
+
+  // Announcement triggers
+  const handleAnnouncementSubmit = async (e) => {
+    e.preventDefault();
+    if (!annTitle.trim() || !annContent.trim()) return;
+    try {
+      await createTeamAnnouncement(id, { title: annTitle, content: annContent });
+      triggerToast("Announcement posted successfully.");
+      setAnnTitle("");
+      setAnnContent("");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to post announcement.", true);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (annId) => {
+    if (!window.confirm("Delete this announcement?")) return;
+    try {
+      await deleteTeamAnnouncement(id, annId);
+      triggerToast("Announcement deleted.");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to delete announcement.", true);
+    }
+  };
+
+  // Task triggers
+  const handleTaskSubmit = async (e) => {
+    e.preventDefault();
+    if (!taskTitle.trim()) return;
+    try {
+      await createTeamTask(id, {
+        title: taskTitle,
+        description: taskDesc,
+        priority: taskPriority,
+        assigneeId: taskAssignee || null,
+        dueDate: taskDueDate || null
+      });
+      triggerToast("Task board card generated.");
+      setTaskTitle("");
+      setTaskDesc("");
+      setTaskPriority("MEDIUM");
+      setTaskAssignee("");
+      setTaskDueDate("");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to create task.", true);
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId, newStatus) => {
+    try {
+      await updateTeamTask(id, taskId, { status: newStatus });
+      triggerToast(`Task updated to ${newStatus}`);
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to update task status.", true);
+    }
+  };
+
+  const handleDeleteTask = async (taskId) => {
+    if (!window.confirm("Delete this task?")) return;
+    try {
+      await deleteTeamTask(id, taskId);
+      triggerToast("Task deleted.");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to delete task.", true);
+    }
+  };
+
+  // Files triggers
+  const handleFileUploadSim = async (e) => {
+    e.preventDefault();
+    if (!fileName.trim()) return;
+    try {
+      await createTeamFile(id, {
+        name: fileName,
+        fileType: fileType,
+        fileSize: fileSize * 1024 * 1024, // bytes
+        fileUrl: "https://codematch-shared-bucket.s3.amazonaws.com/mockfile"
+      });
+      triggerToast("File uploaded successfully.");
+      setFileName("");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to upload file.", true);
+    }
+  };
+
+  const handleDeleteFile = async (fileId) => {
+    if (!window.confirm("Delete this file?")) return;
+    try {
+      await deleteTeamFile(id, fileId);
+      triggerToast("File removed.");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to remove file.", true);
+    }
+  };
+
+  // Resources triggers
+  const handleResourceSubmit = async (e) => {
+    e.preventDefault();
+    if (!resourceTitle.trim() || !resourceLink.trim()) return;
+    try {
+      await createTeamResource(id, { title: resourceTitle, url: resourceLink });
+      triggerToast("Project link pinned.");
+      setResourceTitle("");
+      setResourceLink("");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to pin link.", true);
+    }
+  };
+
+  const handleDeleteResource = async (resId) => {
+    if (!window.confirm("Unpin this resource link?")) return;
+    try {
+      await deleteTeamResource(id, resId);
+      triggerToast("Resource unpinned.");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to unpin link.", true);
+    }
+  };
+
+  // Compute tasks lists per column
+  const tasksByColumn = useMemo(() => {
+    if (!team) return { todo: [], inProgress: [], completed: [] };
+    const todo = team.tasks?.filter(t => t.status === "TODO") || [];
+    const inProgress = team.tasks?.filter(t => t.status === "IN_PROGRESS") || [];
+    const completed = team.tasks?.filter(t => t.status === "COMPLETED") || [];
+    return { todo, inProgress, completed };
+  }, [team]);
+
+  // Statistics computations
+  const stats = useMemo(() => {
+    if (!team) return { membersCount: 0, openTasks: 0, completedTasks: 0, filesCount: 0, resourceCount: 0 };
+    return {
+      membersCount: team.members?.length || 1,
+      openTasks: team.tasks?.filter(t => t.status !== "COMPLETED").length || 0,
+      completedTasks: team.tasks?.filter(t => t.status === "COMPLETED").length || 0,
+      filesCount: team.files?.length || 0,
+      resourceCount: team.resources?.length || 0
+    };
+  }, [team]);
 
   if (loading) {
     return (
-      <div className="teams-page">
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
-          <div className="skeleton-loader" style={{ width: "100%", height: "200px", borderRadius: "12px" }}></div>
+      <div className="teams-loading-wrapper">
+        <div className="skeleton-item hero-skeleton" />
+        <div className="skeleton-grid">
+          <div className="skeleton-item card-skeleton" />
+          <div className="skeleton-item card-skeleton" />
         </div>
       </div>
     );
   }
 
-  if (errorMessage && !team) {
+  if (!team) {
     return (
-      <div className="teams-page">
-        <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "16px", borderRadius: "var(--radius-sm)" }}>{errorMessage}</div>
-        <button className="btn-secondary" onClick={() => navigate("/teams")} style={{ marginTop: "12px" }}>Back to Teams</button>
+      <div className="matches-error-wrapper">
+        <div className="error-card">
+          <span className="icon">📡</span>
+          <h3>Workspace Not Found</h3>
+          <p>{errorMessage || "Failed to load team workspace."}</p>
+          <button className="btn-primary" onClick={() => navigate("/teams")}>Back to Workspaces</button>
+        </div>
       </div>
     );
   }
@@ -162,164 +344,480 @@ export default function TeamDetails() {
   const isLeader = team.leaderId === user?.id;
 
   return (
-    <div className="teams-page">
-      <div>
-        <button className="btn-secondary" onClick={() => navigate("/teams")} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Teams
-        </button>
-      </div>
+    <motion.div 
+      className="teams-page"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div className="teams-toast" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+            <span>✔️ {successMessage}</span>
+          </motion.div>
+        )}
+        {errorMessage && (
+          <motion.div className="teams-toast error" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} style={{ borderColor: "#ef4444", color: "#ef4444" }}>
+            <span>❌ {errorMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {successMessage && <div style={{ background: "var(--success-glow)", border: "1px solid var(--success)", color: "var(--success)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{successMessage}</div>}
-      {errorMessage && <div style={{ background: "var(--danger-glow)", border: "1px solid var(--danger)", color: "var(--danger)", padding: "12px", borderRadius: "var(--radius-sm)", fontSize: "14px" }}>{errorMessage}</div>}
-
-      <div className="team-details-header">
-        <div className="team-details-header__top">
-          {editMode ? (
-            <form onSubmit={handleUpdateTeam} style={{ display: "flex", flexDirection: "column", gap: "16px", width: "100%" }}>
-              <div className="form-group">
-                <label>Team Name</label>
-                <input 
-                  type="text" 
-                  value={editName} 
-                  onChange={(e) => setEditName(e.target.value)}
-                  required 
-                />
-              </div>
-              <div className="form-group">
-                <label>Description</label>
-                <textarea 
-                  value={editDesc} 
-                  onChange={(e) => setEditDesc(e.target.value)} 
-                  rows="3"
-                />
-              </div>
-              <div style={{ display: "flex", gap: "10px" }}>
-                <button type="submit" className="btn-primary" disabled={updateLoading}>{updateLoading ? "Saving..." : "Save Settings"}</button>
-                <button type="button" className="btn-secondary" onClick={() => setEditMode(false)}>Cancel</button>
-              </div>
-            </form>
-          ) : (
-            <>
-              <div>
-                <h1 style={{ fontSize: "28px", margin: "0 0 8px 0", fontWeight: 800, letterSpacing: "-0.5px" }}>{team.name}</h1>
-                <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "15px", lineHeight: 1.5 }}>{team.description || "No description provided."}</p>
-              </div>
-              <div>
-                {isLeader ? (
-                  <button className="btn-secondary" onClick={() => setEditMode(true)} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Settings
-                  </button>
-                ) : (
-                  <button className="btn-danger" onClick={handleLeaveTeam} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    Leave
-                  </button>
-                )}
-              </div>
-            </>
-          )}
+      {/* SECTION 1: Team Header */}
+      <div className="teams-header-card">
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          <div className="team-avatar-box" style={{ width: "64px", height: "64px", fontSize: "24px" }}>
+            {team.name ? team.name[0].toUpperCase() : "T"}
+          </div>
+          <div>
+            <h1>{team.name} Workspace</h1>
+            <p className="subtitle">{team.description || "Configure active tasks and collaborate in this workspace."}</p>
+          </div>
         </div>
 
-        {!editMode && (
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border)", paddingTop: "16px", marginTop: "8px", gap: "16px" }}>
-            <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-              Created: <strong>{new Date(team.createdAt).toLocaleDateString()}</strong> | Leader: <strong>{team.leader.name}</strong>
-            </div>
+        <div className="header-meta">
+          <div className="meta-item">
+            <span>Join Code</span>
+            <strong className="code-badge" onClick={handleCopyCode} style={{ cursor: "pointer" }}>{team.joinCode} 📋</strong>
+          </div>
+          <div className="meta-item">
+            <span>Recruiting Status</span>
+            <strong>{team.isRecruiting ? "Recruiting" : "Closed"}</strong>
+          </div>
+        </div>
+      </div>
 
-            <div className="join-code-container" onClick={handleCopyCode} style={{ cursor: "pointer" }} title="Click to copy join code">
-              <span className="join-code-label">Join Code</span>
-              <span className="join-code-value">{team.joinCode}</span>
-              {copied ? (
-                <svg width="14" height="14" fill="none" stroke="var(--success)" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+      {/* SECTION 9: Quick Statistics Panel */}
+      <div className="stats-dashboard-grid">
+        <div className="stat-card">
+          <span>Active Members</span>
+          <strong>{stats.membersCount}</strong>
+        </div>
+        <div className="stat-card">
+          <span>Open Tasks</span>
+          <strong>{stats.openTasks}</strong>
+        </div>
+        <div className="stat-card">
+          <span>Completed Tasks</span>
+          <strong>{stats.completedTasks}</strong>
+        </div>
+        <div className="stat-card highlight">
+          <span>Shared Files</span>
+          <strong>{stats.filesCount} Uploads</strong>
+        </div>
+      </div>
+
+      {/* Primary Split View Layout */}
+      <div className="teams-main-layout">
+        
+        {/* LEFT COLUMN: Pinned Links, Sidebar Preview Chat, Actions */}
+        <div className="teams-left-column">
+          
+          {/* SECTION 7: Pinned Resource Links */}
+          <div className="quick-actions-card">
+            <h3 className="section-title">📌 Pinned Resources</h3>
+            <div className="resources-list-stack">
+              {team.resources?.length === 0 ? (
+                <span className="muted-text" style={{ fontSize: "12px", display: "block", marginBottom: "10px" }}>No pinned links yet. Pin your Figma, Google Drive or GitHub.</span>
               ) : (
-                <svg width="14" height="14" fill="none" stroke="var(--primary)" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
+                team.resources.map(res => (
+                  <div key={res.id} className="team-item-row" style={{ marginBottom: "8px" }}>
+                    <div>
+                      <a href={res.url} target="_blank" rel="noreferrer" style={{ color: "var(--primary)", fontWeight: "600", fontSize: "13px" }}>
+                        🔗 {res.title}
+                      </a>
+                    </div>
+                    {isLeader && (
+                      <button className="btn-add-suggested" onClick={() => handleDeleteResource(res.id)}>Unpin</button>
+                    )}
+                  </div>
+                ))
+              )}
+
+              {isLeader && (
+                <form onSubmit={handleResourceSubmit} className="join-team-inline-form" style={{ marginTop: "12px" }}>
+                  <input type="text" placeholder="Title" value={resourceTitle} onChange={(e) => setResourceTitle(e.target.value)} required />
+                  <input type="url" placeholder="https://" value={resourceLink} onChange={(e) => setResourceLink(e.target.value)} required />
+                  <button type="submit">Pin</button>
+                </form>
               )}
             </div>
           </div>
-        )}
-      </div>
 
-      <div className="members-section">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", marginBottom: "16px", gap: "12px" }}>
-          <h2>Team Members ({team.members.length})</h2>
-          
+          {/* SECTION 10: Embedded Chat Preview */}
+          <div className="quick-actions-card">
+            <h3 className="section-title">💬 Team Channels Preview</h3>
+            <div className="team-chat-preview-box" style={{ background: "var(--background)", borderRadius: "8px", padding: "16px", border: "1px solid var(--border)" }}>
+              <span className="muted-text" style={{ fontSize: "12px", display: "block", marginBottom: "8px" }}>Chat with teammates in full screen channel logs.</span>
+              <button className="btn-primary-action" onClick={() => navigate("/chat")} style={{ padding: "8px", fontSize: "12px" }}>
+                Open Team Chat Channel
+              </button>
+            </div>
+          </div>
+
           {/* Direct Invite Form */}
           {isLeader && (
-            <form onSubmit={handleInvite} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <input
-                type="email"
-                placeholder="Invite member by email..."
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                required
-                style={{ padding: "8px 12px", border: "1.5px solid var(--border)", borderRadius: "6px", fontSize: "13px", background: "var(--background)", color: "var(--text-primary)" }}
-              />
-              <button className="btn-primary" type="submit" disabled={inviteLoading} style={{ padding: "8px 16px", fontSize: "13px" }}>
-                {inviteLoading ? "Inviting..." : "Invite"}
-              </button>
-            </form>
+            <div className="quick-actions-card">
+              <h3 className="section-title">✉ Invite Members</h3>
+              <form onSubmit={handleSendInvite} className="join-team-inline-form">
+                <input 
+                  type="email" 
+                  value={inviteEmail} 
+                  onChange={(e) => setInviteEmail(e.target.value)} 
+                  placeholder="teammate@codematch.com" 
+                  required 
+                />
+                <button type="submit">Invite</button>
+              </form>
+            </div>
           )}
+
+          {/* Workspace settings */}
+          <div className="quick-actions-card">
+            <h3 className="section-title">⚙ Workspace Controls</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {isLeader ? (
+                <>
+                  <button className="btn-toggle-recruitment" onClick={() => setEditMode(true)} style={{ width: "100%", padding: "10px" }}>
+                    Configure Metadata
+                  </button>
+                  <button className="btn-delete-team" onClick={() => navigate("/teams")} style={{ width: "100%", padding: "10px" }}>
+                    Leave Workspace
+                  </button>
+                </>
+              ) : (
+                <button className="btn-delete-team" onClick={handleLeaveTeam} style={{ width: "100%", padding: "10px" }}>
+                  Leave Workspace
+                </button>
+              )}
+            </div>
+          </div>
+
         </div>
 
-        <div className="members-grid">
-          {team.members.map((membership) => {
-            const isMemberLeader = team.leaderId === membership.userId;
-            const isSelf = membership.userId === user?.id;
-            const currentRole = membership.role || "MEMBER";
-            return (
-              <div key={membership.id} className="member-card">
-                <div className="member-info">
-                  <div className="member-name" style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <span>{membership.user.name} {isSelf && "(You)"}</span>
-                    {isMemberLeader ? (
-                      <span className="leader-tag" style={{ background: "var(--primary)", color: "#fff", padding: "1px 6px", borderRadius: "10px", fontSize: "10px" }}>Leader</span>
-                    ) : (
-                      <span style={{ background: currentRole === "ADMIN" ? "#f59e0b" : "var(--border)", color: currentRole === "ADMIN" ? "#fff" : "var(--text-secondary)", padding: "1px 6px", borderRadius: "10px", fontSize: "10px", fontWeight: "bold" }}>
-                        {currentRole}
-                      </span>
-                    )}
+        {/* RIGHT COLUMN: Tab views (Members, Tasks Kanban, Announcements, Files, Logs) */}
+        <div className="teams-right-column">
+          
+          {/* Navigation tabs */}
+          <div className="category-scroll-grid" style={{ marginBottom: "16px" }}>
+            <button className={`category-filter-btn ${activeTab === "MEMBERS" ? "active" : ""}`} onClick={() => setActiveTab("MEMBERS")}>
+              Members ({team.members?.length})
+            </button>
+            <button className={`category-filter-btn ${activeTab === "TASKS" ? "active" : ""}`} onClick={() => setActiveTab("TASKS")}>
+              Kanban Board ({team.tasks?.length || 0})
+            </button>
+            <button className={`category-filter-btn ${activeTab === "ANNOUNCEMENTS" ? "active" : ""}`} onClick={() => setActiveTab("ANNOUNCEMENTS")}>
+              Announcements ({team.announcements?.length || 0})
+            </button>
+            <button className={`category-filter-btn ${activeTab === "FILES" ? "active" : ""}`} onClick={() => setActiveTab("FILES")}>
+              Files ({team.files?.length || 0})
+            </button>
+            <button className={`category-filter-btn ${activeTab === "LOGS" ? "active" : ""}`} onClick={() => setActiveTab("LOGS")}>
+              Activity Log ({team.activities?.length || 0})
+            </button>
+          </div>
+
+          {/* TAB 1: MEMBERS */}
+          {activeTab === "MEMBERS" && (
+            <div className="teams-grid-list">
+              {team.members.map(memberUser => {
+                const isSelf = memberUser.userId === user?.id;
+                const isMemberLeader = team.leaderId === memberUser.userId;
+                const currentRole = memberUser.role || "MEMBER";
+                
+                return (
+                  <div key={memberUser.id} className="team-card-item" style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                      <div className="conn-avatar">
+                        {memberUser.user?.name ? memberUser.user.name[0].toUpperCase() : "U"}
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: "14px" }}>
+                          {memberUser.user?.name} {isSelf && "(You)"}
+                        </strong>
+                        <span className="role-lbl" style={{ margin: "2px 0 0 0", fontSize: "11px" }}>
+                          {isMemberLeader ? "LEADER" : currentRole}
+                        </span>
+                        
+                        {/* Skills chips */}
+                        {memberUser.user?.skills && memberUser.user.skills.length > 0 && (
+                          <div className="skills-chips-row" style={{ marginTop: "6px" }}>
+                            {memberUser.user.skills.slice(0, 3).map(s => (
+                              <span key={s.id} className="skill-chip">{s.skill?.name}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      {isLeader && !isMemberLeader && (
+                        <button className="btn-toggle-recruitment" onClick={() => handleRoleChange(memberUser.userId, currentRole)} style={{ padding: "4px 8px", fontSize: "11px" }}>
+                          {currentRole === "ADMIN" ? "Demote" : "Promote"}
+                        </button>
+                      )}
+                      {isLeader && !isMemberLeader && (
+                        <button className="btn-delete-team" onClick={() => handleRemoveMember(memberUser.userId)} style={{ padding: "4px 8px", fontSize: "11px" }}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="member-email">{membership.user.email}</div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* TAB 2: TASKS KANBAN BOARD */}
+          {activeTab === "TASKS" && (
+            <div className="kanban-layout-stack" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              
+              {/* Task creation form */}
+              <div className="quick-actions-card" style={{ padding: "16px" }}>
+                <h4 style={{ margin: "0 0 12px 0", fontSize: "13px" }}>Create Task Card</h4>
+                <form onSubmit={handleTaskSubmit} className="modal-form">
+                  <div className="form-group-row">
+                    <input type="text" placeholder="Task Title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} required />
+                    <select value={taskPriority} onChange={(e) => setTaskPriority(e.target.value)}>
+                      <option value="LOW">Low Priority</option>
+                      <option value="MEDIUM">Medium Priority</option>
+                      <option value="HIGH">High Priority</option>
+                    </select>
+                  </div>
+                  <div className="form-group-row">
+                    <select value={taskAssignee} onChange={(e) => setTaskAssignee(e.target.value)}>
+                      <option value="">Assign Member (Optional)</option>
+                      {team.members.map(m => (
+                        <option key={m.userId} value={m.userId}>{m.user?.name}</option>
+                      ))}
+                    </select>
+                    <input type="date" value={taskDueDate} onChange={(e) => setTaskDueDate(e.target.value)} />
+                  </div>
+                  <button type="submit" className="btn-primary-action" style={{ padding: "8px" }}>Create Task</button>
+                </form>
+              </div>
+
+              {/* Kanban columns grid */}
+              <div className="kanban-columns-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
+                
+                {/* Column 1: TODO */}
+                <div className="kanban-column" style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "8px", padding: "12px" }}>
+                  <h4 style={{ borderBottom: "1px solid var(--border)", paddingBottom: "8px", margin: "0 0 10px 0", fontSize: "13px" }}>To Do ({tasksByColumn.todo.length})</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {tasksByColumn.todo.map(task => (
+                      <div key={task.id} className="available-team-card" style={{ flexDirection: "column", alignItems: "stretch", padding: "12px" }}>
+                        <strong>{task.title}</strong>
+                        <span className="available-desc" style={{ fontSize: "11px" }}>Priority: {task.priority}</span>
+                        {task.assignee && <span className="meta-details" style={{ fontSize: "10px" }}>Assigned: {task.assignee.name}</span>}
+                        
+                        <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                          <button className="btn-add-suggested" onClick={() => handleUpdateTaskStatus(task.id, "IN_PROGRESS")}>Start →</button>
+                          <button className="btn-delete-team" onClick={() => handleDeleteTask(task.id)} style={{ padding: "2px 6px" }}>Del</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  {isLeader && !isMemberLeader && (
-                    <button
-                      className="btn-secondary"
-                      onClick={() => handleRoleChange(membership.userId, currentRole)}
-                      style={{ padding: "4px 8px", fontSize: "11px" }}
-                    >
-                      {currentRole === "ADMIN" ? "Demote" : "Promote"}
-                    </button>
-                  )}
-                  {isLeader && !isMemberLeader && (
-                    <button 
-                      className="btn-danger" 
-                      onClick={() => handleRemoveMember(membership.userId)}
-                      style={{ padding: "4px 8px", fontSize: "11px" }}
-                    >
-                      Remove
-                    </button>
-                  )}
+                {/* Column 2: IN_PROGRESS */}
+                <div className="kanban-column" style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "8px", padding: "12px" }}>
+                  <h4 style={{ borderBottom: "1px solid var(--border)", paddingBottom: "8px", margin: "0 0 10px 0", fontSize: "13px" }}>In Progress ({tasksByColumn.inProgress.length})</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {tasksByColumn.inProgress.map(task => (
+                      <div key={task.id} className="available-team-card" style={{ flexDirection: "column", alignItems: "stretch", padding: "12px" }}>
+                        <strong>{task.title}</strong>
+                        <span className="available-desc" style={{ fontSize: "11px" }}>Priority: {task.priority}</span>
+                        {task.assignee && <span className="meta-details" style={{ fontSize: "10px" }}>Assigned: {task.assignee.name}</span>}
+
+                        <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                          <button className="btn-add-suggested" onClick={() => handleUpdateTaskStatus(task.id, "TODO")}>← Back</button>
+                          <button className="btn-add-suggested" onClick={() => handleUpdateTaskStatus(task.id, "COMPLETED")}>Done →</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Column 3: COMPLETED */}
+                <div className="kanban-column" style={{ background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "8px", padding: "12px" }}>
+                  <h4 style={{ borderBottom: "1px solid var(--border)", paddingBottom: "8px", margin: "0 0 10px 0", fontSize: "13px" }}>Completed ({tasksByColumn.completed.length})</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {tasksByColumn.completed.map(task => (
+                      <div key={task.id} className="available-team-card" style={{ flexDirection: "column", alignItems: "stretch", padding: "12px" }}>
+                        <strong style={{ textDecoration: "line-through", color: "var(--text-muted)" }}>{task.title}</strong>
+                        <span className="available-desc" style={{ fontSize: "11px" }}>Priority: {task.priority}</span>
+
+                        <div style={{ display: "flex", gap: "6px", marginTop: "8px" }}>
+                          <button className="btn-add-suggested" onClick={() => handleUpdateTaskStatus(task.id, "IN_PROGRESS")}>← Reopen</button>
+                          <button className="btn-delete-team" onClick={() => handleDeleteTask(task.id)} style={{ padding: "2px 6px" }}>Del</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* TAB 3: ANNOUNCEMENTS */}
+          {activeTab === "ANNOUNCEMENTS" && (
+            <div className="announcements-stack-view" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div className="quick-actions-card">
+                <h4 style={{ margin: "0 0 12px 0", fontSize: "13px" }}>Post Announcement</h4>
+                <form onSubmit={handleAnnouncementSubmit} className="modal-form">
+                  <input type="text" placeholder="Title" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} required />
+                  <textarea rows="3" placeholder="Message content" value={annContent} onChange={(e) => setAnnContent(e.target.value)} required />
+                  <button type="submit" className="btn-primary-action" style={{ padding: "8px" }}>Publish Announcement</button>
+                </form>
+              </div>
+
+              <div className="teams-grid-list">
+                {team.announcements?.length === 0 ? (
+                  <span className="muted-text" style={{ fontSize: "12px" }}>No announcements posted in this workspace yet.</span>
+                ) : (
+                  team.announcements.map(ann => (
+                    <div key={ann.id} className="team-card-item">
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <strong style={{ fontSize: "14px" }}>📢 {ann.title}</strong>
+                        {isLeader && (
+                          <button className="btn-delete-team" onClick={() => handleDeleteAnnouncement(ann.id)} style={{ padding: "2px 6px", fontSize: "10px" }}>
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                      <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: "6px 0 10px 0", lineHeight: "1.4" }}>
+                        {ann.content}
+                      </p>
+                      <span className="meta-details" style={{ fontSize: "10px" }}>
+                        Posted: {new Date(ann.createdAt).toLocaleDateString()} | Author: {ann.creator?.name}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: FILES */}
+          {activeTab === "FILES" && (
+            <div className="files-stack-view" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div className="quick-actions-card">
+                <h4 style={{ margin: "0 0 12px 0", fontSize: "13px" }}>Share Files Simulation</h4>
+                <form onSubmit={handleFileUploadSim} className="modal-form">
+                  <div className="form-group-row">
+                    <input type="text" placeholder="File Name e.g. project-specs" value={fileName} onChange={(e) => setFileName(e.target.value)} required />
+                    <select value={fileType} onChange={(e) => setFileType(e.target.value)}>
+                      <option value="PDF">PDF Document</option>
+                      <option value="ZIP">ZIP Archive</option>
+                      <option value="IMAGE">Image File</option>
+                      <option value="DOC">Word Doc</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="btn-primary-action" style={{ padding: "8px" }}>Upload Simulated File</button>
+                </form>
+              </div>
+
+              <div className="available-teams-grid">
+                {team.files?.length === 0 ? (
+                  <span className="muted-text" style={{ fontSize: "12px" }}>No files uploaded yet.</span>
+                ) : (
+                  team.files.map(f => (
+                    <div key={f.id} className="available-team-card">
+                      <div>
+                        <strong>📁 {f.name}</strong>
+                        <div className="meta-details" style={{ marginTop: "4px" }}>
+                          <span>Size: {Math.round(f.fileSize / (1024 * 1024))} MB</span>
+                          <span>Uploaded by: {f.uploadedBy?.name}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <a href={f.fileUrl} target="_blank" rel="noreferrer" className="btn-apply" style={{ textDecoration: "none", display: "inline-block", fontSize: "11px", padding: "4px 8px" }}>
+                          Download
+                        </a>
+                        {isLeader && (
+                          <button className="btn-delete-team" onClick={() => handleDeleteFile(f.id)} style={{ padding: "4px 8px", fontSize: "11px" }}>
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: LOGS */}
+          {activeTab === "LOGS" && (
+            <div className="quick-actions-card">
+              <h4 style={{ margin: "0 0 16px 0", fontSize: "13px" }}>Workspace Activity Timeline</h4>
+              <div className="activity-timeline-feed" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {team.activities?.length === 0 ? (
+                  <span className="muted-text" style={{ fontSize: "12px" }}>No timeline events recorded.</span>
+                ) : (
+                  team.activities.map(act => (
+                    <div key={act.id} className="connection-item-row" style={{ gap: "10px", padding: "8px 12px" }}>
+                      <span style={{ fontSize: "14px" }}>⚡</span>
+                      <div>
+                        <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>
+                          <strong>{act.user?.name}</strong> {act.details}
+                        </span>
+                        <span className="meta-details" style={{ display: "block", fontSize: "10px", marginTop: "2px" }}>
+                          {new Date(act.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
+
       </div>
-    </div>
+
+      {/* SETTINGS EDIT MODAL */}
+      <AnimatePresence>
+        {editMode && (
+          <div className="create-modal-overlay">
+            <motion.div className="create-modal-content" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3>Configure Workspace Settings</h3>
+              <form onSubmit={handleUpdateTeamSettings} className="modal-form">
+                <div>
+                  <label>Team Name</label>
+                  <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} required />
+                </div>
+                <div>
+                  <label>Project Description</label>
+                  <textarea rows="3" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} />
+                </div>
+                <div className="form-group-row">
+                  <div>
+                    <label>Required Skills (comma separated)</label>
+                    <input type="text" value={editSkills} onChange={(e) => setEditSkills(e.target.value)} placeholder="React, Go" />
+                  </div>
+                  <div>
+                    <label>Required Interests (comma separated)</label>
+                    <input type="text" value={editInterests} onChange={(e) => setEditInterests(e.target.value)} placeholder="AI, Ops" />
+                  </div>
+                </div>
+                <div>
+                  <label>Maximum Member Count</label>
+                  <input type="number" min="2" max="15" value={editMaxMembers} onChange={(e) => setEditMaxMembers(Number(e.target.value))} />
+                </div>
+
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary">Save Settings</button>
+                  <button type="button" className="btn-secondary" onClick={() => setEditMode(false)}>Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+    </motion.div>
   );
 }
