@@ -10,11 +10,26 @@ export const getMyInterests = async () => {
   return res.data.data;
 };
 
-export const addInterest = async (interestId) => {
+export const addInterest = async (interestId, matchingWeight = 1) => {
   const res = await api.post("/interests/user", {
     interestId,
+    matchingWeight
   });
+  return res.data.data;
+};
 
+export const updateInterest = async (interestId, matchingWeight) => {
+  const res = await api.patch(`/interests/user/${interestId}`, {
+    matchingWeight
+  });
+  return res.data.data;
+};
+
+export const createInterest = async (name, category) => {
+  const res = await api.post("/interests", {
+    name,
+    category
+  });
   return res.data.data;
 };
 

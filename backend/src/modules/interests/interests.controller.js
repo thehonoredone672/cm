@@ -4,48 +4,72 @@ const {
   addInterestToUser,
   getUserInterests,
   removeInterestFromUser,
+  updateUserInterest,
 } = require("./interests.service");
 
 const createInterestHandler =
-  async (req, res) => {
-    const { name } = req.body;
+  async (req, res, next) => {
+    try {
+      const { name, category } = req.body;
 
-    const interest =
-      await createInterest(name);
+      const interest =
+        await createInterest(name, category);
 
-    res.status(201).json({
-      success: true,
-      data: interest,
-    });
+      res.status(201).json({
+        success: true,
+        data: interest,
+      });
+    } catch (err) {
+      next(err);
+    }
   };
 
 const getInterestsHandler =
-  async (req, res) => {
-    const interests =
-      await getAllInterests();
+  async (req, res, next) => {
+    try {
+      const interests =
+        await getAllInterests();
 
-    res.status(200).json({
-      success: true,
-      data: interests,
-    });
+      res.status(200).json({
+        success: true,
+        data: interests,
+      });
+    } catch (err) {
+      next(err);
+    }
   };
 
 const addInterestHandler =
-  async (req, res) => {
-    const { interestId } =
-      req.body;
+  async (req, res, next) => {
+    try {
+      const { interestId, matchingWeight } = req.body;
 
-    const result =
-      await addInterestToUser(
-        req.user.id,
-        interestId
-      );
+      const result =
+        await addInterestToUser(
+          req.user.id,
+          interestId,
+          matchingWeight
+        );
 
-    res.status(201).json({
-      success: true,
-      data: result,
-    });
+      res.status(201).json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
   };
+
+const updateInterestHandler = async (req, res, next) => {
+  try {
+    const { interestId } = req.params;
+    const { matchingWeight } = req.body;
+    const result = await updateUserInterest(req.user.id, interestId, matchingWeight);
+    res.status(200).json({ success: true, data: result });
+  } catch (err) {
+    next(err);
+  }
+};
 
 const getUserInterestsHandler =
   async (req, res) => {
@@ -83,4 +107,5 @@ module.exports = {
   addInterestHandler,
   getUserInterestsHandler,
   removeInterestHandler,
+  updateInterestHandler,
 };

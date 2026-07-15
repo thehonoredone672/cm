@@ -1,6 +1,6 @@
 const prisma = require("../../config/prisma");
 
-const createInterest = async (name) => {
+const createInterest = async (name, category = "Programming") => {
   const existingInterest =
     await prisma.interest.findUnique({
       where: {
@@ -15,6 +15,7 @@ const createInterest = async (name) => {
   return prisma.interest.create({
     data: {
       name,
+      category,
     },
   });
 };
@@ -29,7 +30,8 @@ const getAllInterests = async () => {
 
 const addInterestToUser = async (
   userId,
-  interestId
+  interestId,
+  matchingWeight = 1
 ) => {
   const interest =
     await prisma.interest.findUnique({
@@ -60,7 +62,24 @@ const addInterestToUser = async (
     data: {
       userId,
       interestId,
+      matchingWeight: Number(matchingWeight),
     },
+  });
+};
+
+const updateUserInterest = async (userId, interestId, matchingWeight) => {
+  const existing = await prisma.userInterest.findFirst({
+    where: { userId, interestId }
+  });
+  if (!existing) {
+    throw new Error("User interest association not found");
+  }
+
+  return prisma.userInterest.update({
+    where: { id: existing.id },
+    data: {
+      matchingWeight: Number(matchingWeight)
+    }
   });
 };
 
@@ -96,4 +115,5 @@ module.exports = {
   addInterestToUser,
   getUserInterests,
   removeInterestFromUser,
+  updateUserInterest
 };

@@ -128,8 +128,9 @@ model UserSkill {
 }
 
 model Interest {
-  id   String @id @default(uuid())
-  name String @unique
+  id       String @id @default(uuid())
+  name     String @unique
+  category String @default("Programming")
 
   users UserInterest[]
 }
@@ -142,6 +143,9 @@ model UserInterest {
 
   user     User     @relation(fields: [userId], references: [id])
   interest Interest @relation(fields: [interestId], references: [id])
+
+  matchingWeight    Int      @default(1)
+  createdAt         DateTime @default(now())
 
   @@unique([userId, interestId])
 }

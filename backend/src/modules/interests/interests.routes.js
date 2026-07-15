@@ -13,6 +13,7 @@ const {
   addInterestHandler,
   getUserInterestsHandler,
   removeInterestHandler,
+  updateInterestHandler,
 } = require(
   "./interests.controller"
 );
@@ -40,6 +41,12 @@ router.get(
   "/user",
   protect,
   getUserInterestsHandler
+);
+
+router.patch(
+  "/user/:interestId",
+  protect,
+  updateInterestHandler
 );
 
 router.delete(
