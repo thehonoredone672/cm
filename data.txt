@@ -61,3 +61,9 @@ sarah-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxYmZlM2RkMC05MjZjLTQ1Z
 ✓ Verification Success: Sub-resources match perfectly in database retrieval.
 ✓ Cleanup: Removed team workspace from database.
 === ALL WORKSPACE TESTS PASSED SUCCESSFULLY ===
+
+npx neonctl@latest init
+
+postgresql://neondb_owner:npg_TE3CJAuxGQS4@ep-cool-fire-avfj97h5.c-11.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+postgresql://postgres:Dharsan@2007@localhost:5432/codematch
