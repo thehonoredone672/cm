@@ -6,7 +6,7 @@ import "../../styles/auth.css";
 import { useAuth } from "../../context/AuthContext";
 
 import Input from "../../components/common/Input/Input";
-import Button from "../../components/common/Button/Button";
+import Button from "../../components/common/button/Button";
 
 import { loginUser } from "../../services/authService";
 
