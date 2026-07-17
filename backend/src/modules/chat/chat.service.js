@@ -101,7 +101,10 @@ const createConversation = async (user1Id, user2Id) => {
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        include: { sender: { select: { id: true, name: true } } },
+        include: { 
+          sender: { select: { id: true, name: true } },
+          reactions: { include: { user: { select: { id: true, name: true } } } }
+        },
       },
     },
   });
@@ -121,7 +124,10 @@ const createConversation = async (user1Id, user2Id) => {
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        include: { sender: { select: { id: true, name: true } } },
+        include: { 
+          sender: { select: { id: true, name: true } },
+          reactions: { include: { user: { select: { id: true, name: true } } } }
+        },
       },
     },
   });
@@ -137,7 +143,10 @@ const getUserConversations = async (userId) => {
       messages: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        include: { sender: { select: { id: true, name: true } } },
+        include: { 
+          sender: { select: { id: true, name: true } },
+          reactions: { include: { user: { select: { id: true, name: true } } } }
+        },
       },
     },
     orderBy: { updatedAt: "desc" },
@@ -147,6 +156,7 @@ const getUserConversations = async (userId) => {
     conversations.map(async (conv) => {
       const self = conv.participants.find((p) => p.userId === userId);
       const lastReadAt = self?.lastReadAt ?? null;
+      const isPinned = self?.isPinned ?? false;
 
       const unreadCount = await prisma.message.count({
         where: {
@@ -157,11 +167,29 @@ const getUserConversations = async (userId) => {
         },
       });
 
-      return { ...conv, unreadCount };
+      return { ...conv, unreadCount, isPinned };
     })
   );
 
   return withMeta;
+};
+
+// ─── Pin Conversation ──────────────────────────────────────────────────────────
+
+const pinConversation = async (userId, conversationId, isPinned) => {
+  const participant = await prisma.conversationParticipant.findUnique({
+    where: {
+      conversationId_userId: { conversationId, userId }
+    }
+  });
+  if (!participant) throw new Error("Participant not found in conversation.");
+
+  return prisma.conversationParticipant.update({
+    where: {
+      conversationId_userId: { conversationId, userId }
+    },
+    data: { isPinned }
+  });
 };
 
 // ─── Messages ─────────────────────────────────────────────────────────────────
@@ -179,13 +207,16 @@ const getMessages = async (conversationId, userId, { limit = 50, before } = {}) 
     take: Number(limit),
     include: {
       sender: { select: { id: true, name: true } },
+      reactions: {
+        include: { user: { select: { id: true, name: true } } }
+      }
     },
   });
 
   return messages;
 };
 
-const sendMessage = async (conversationId, senderId, text, fileUrl = null, fileType = null) => {
+const sendMessage = async (conversationId, senderId, text, fileUrl = null, fileType = null, codeLanguage = null) => {
   const allowed = await isParticipant(conversationId, senderId);
   if (!allowed) throw new Error("Not authorized.");
 
@@ -193,8 +224,18 @@ const sendMessage = async (conversationId, senderId, text, fileUrl = null, fileT
   if (!msgText && !fileUrl) throw new Error("Message cannot be empty.");
 
   const message = await prisma.message.create({
-    data: { conversationId, senderId, text: msgText, fileUrl, fileType },
-    include: { sender: { select: { id: true, name: true } } },
+    data: { 
+      conversationId, 
+      senderId, 
+      text: msgText, 
+      fileUrl, 
+      fileType,
+      codeLanguage
+    },
+    include: { 
+      sender: { select: { id: true, name: true } },
+      reactions: { include: { user: { select: { id: true, name: true } } } }
+    },
   });
 
   await prisma.conversation.update({
@@ -236,6 +277,30 @@ const sendMessage = async (conversationId, senderId, text, fileUrl = null, fileT
   return message;
 };
 
+const editMessage = async (messageId, userId, text) => {
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!message) throw new Error("Message not found.");
+  if (message.senderId !== userId) throw new Error("Not authorized.");
+
+  const updated = await prisma.message.update({
+    where: { id: messageId },
+    data: { text: text.trim(), isEdited: true },
+    include: { 
+      sender: { select: { id: true, name: true } },
+      reactions: { include: { user: { select: { id: true, name: true } } } }
+    },
+  });
+
+  try {
+    const io = getIO();
+    io.to(message.conversationId).emit("message_edited", updated);
+  } catch (err) {
+    console.error("[chat.service] Edit emit failed:", err.message);
+  }
+
+  return updated;
+};
+
 const deleteMessage = async (messageId, userId) => {
   const message = await prisma.message.findUnique({ where: { id: messageId } });
   if (!message) throw new Error("Message not found.");
@@ -244,7 +309,10 @@ const deleteMessage = async (messageId, userId) => {
   const updated = await prisma.message.update({
     where: { id: messageId },
     data: { isDeleted: true, text: "This message was deleted." },
-    include: { sender: { select: { id: true, name: true } } },
+    include: { 
+      sender: { select: { id: true, name: true } },
+      reactions: { include: { user: { select: { id: true, name: true } } } }
+    },
   });
 
   try {
@@ -259,6 +327,85 @@ const deleteMessage = async (messageId, userId) => {
 
   return updated;
 };
+
+const pinMessage = async (messageId, userId, isPinned) => {
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!message) throw new Error("Message not found.");
+
+  const allowed = await isParticipant(message.conversationId, userId);
+  if (!allowed) throw new Error("Not authorized.");
+
+  const updated = await prisma.message.update({
+    where: { id: messageId },
+    data: { isPinned },
+    include: { 
+      sender: { select: { id: true, name: true } },
+      reactions: { include: { user: { select: { id: true, name: true } } } }
+    },
+  });
+
+  try {
+    const io = getIO();
+    io.to(message.conversationId).emit("message_pinned_toggled", updated);
+  } catch (e) {
+    console.error("[chat.service] Pin emit failed", e.message);
+  }
+
+  return updated;
+};
+
+// ─── Emoji Reactions ───────────────────────────────────────────────────────────
+
+const addReaction = async (messageId, userId, emoji) => {
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!message) throw new Error("Message not found.");
+
+  const allowed = await isParticipant(message.conversationId, userId);
+  if (!allowed) throw new Error("Not authorized.");
+
+  const reaction = await prisma.messageReaction.upsert({
+    where: {
+      messageId_userId_emoji: { messageId, userId, emoji }
+    },
+    update: {},
+    create: { messageId, userId, emoji },
+    include: { user: { select: { id: true, name: true } } }
+  });
+
+  try {
+    const io = getIO();
+    io.to(message.conversationId).emit("reaction_added", { messageId, reaction });
+  } catch (e) {
+    console.error("[chat.service] Reaction add emit failed", e.message);
+  }
+
+  return reaction;
+};
+
+const removeReaction = async (messageId, userId, emoji) => {
+  const message = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!message) throw new Error("Message not found.");
+
+  const allowed = await isParticipant(message.conversationId, userId);
+  if (!allowed) throw new Error("Not authorized.");
+
+  const deleted = await prisma.messageReaction.delete({
+    where: {
+      messageId_userId_emoji: { messageId, userId, emoji }
+    }
+  });
+
+  try {
+    const io = getIO();
+    io.to(message.conversationId).emit("reaction_removed", { messageId, emoji, userId });
+  } catch (e) {
+    console.error("[chat.service] Reaction remove emit failed", e.message);
+  }
+
+  return deleted;
+};
+
+// ─── Read receipts ─────────────────────────────────────────────────────────────
 
 const markAsRead = async (conversationId, userId) => {
   const allowed = await isParticipant(conversationId, userId);
@@ -284,5 +431,6 @@ const markAsRead = async (conversationId, userId) => {
 module.exports = {
   isParticipant, getTeammates, createConversation,
   getUserConversations, getMessages, sendMessage,
-  deleteMessage, markAsRead,
+  deleteMessage, editMessage, pinMessage, addReaction,
+  removeReaction, markAsRead, pinConversation
 };

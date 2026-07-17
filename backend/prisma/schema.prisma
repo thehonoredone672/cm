@@ -100,12 +100,17 @@ model User {
   driveApplications  CandidateApplication[]
   certificates       Certificate[]
 
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  teamAnnouncements TeamAnnouncement[]
-  teamTasks         TeamTask[]
-  teamFiles         TeamFile[]
-  teamActivities    TeamActivity[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  teamAnnouncements  TeamAnnouncement[]
+  teamTasks          TeamTask[]
+  teamFiles          TeamFile[]
+  teamActivities     TeamActivity[]
+  messageReactions   MessageReaction[]
+  problemBookmarks   ProblemBookmark[]
+  problemLikes       ProblemLike[]
+  problemDiscussions ProblemDiscussion[]
+  problemReports     ProblemReport[]
 }
 
 model Skill {
@@ -207,6 +212,7 @@ model ConversationParticipant {
   userId         String
 
   lastReadAt DateTime?
+  isPinned   Boolean   @default(false)
 
   conversation Conversation @relation(fields: [conversationId], references: [id])
   user         User         @relation(fields: [userId], references: [id])
@@ -220,10 +226,14 @@ model Message {
   conversationId String
   senderId       String
 
-  text      String
-  isDeleted Boolean @default(false)
-  fileUrl   String?
-  fileType  String? // IMAGE or FILE
+  text         String
+  isDeleted    Boolean           @default(false)
+  fileUrl      String?
+  fileType     String? // IMAGE or FILE
+  isPinned     Boolean           @default(false)
+  isEdited     Boolean           @default(false)
+  codeLanguage String?
+  reactions    MessageReaction[]
 
   conversation Conversation @relation(fields: [conversationId], references: [id])
   sender       User         @relation(fields: [senderId], references: [id])
@@ -296,22 +306,28 @@ enum Difficulty {
 }
 
 model Problem {
-  id             String          @id @default(uuid())
+  id             String              @id @default(uuid())
   title          String
   description    String
   category       String
-  difficulty     Difficulty      @default(EASY)
+  difficulty     Difficulty          @default(EASY)
   tags           String[]
+  companies      String[]
   constraints    String?
-  status         String          @default("PUBLISHED") // DRAFT, PUBLISHED
-  visibility     String          @default("PUBLIC") // PUBLIC, PRIVATE
+  status         String              @default("PUBLISHED") // DRAFT, PUBLISHED
+  visibility     String              @default("PUBLIC") // PUBLIC, PRIVATE
   starterCode    Json // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
   examples       Json // E.g. [{ input: "...", output: "...", explanation: "..." }]
   testCases      TestCase[]
   submissions    Submission[]
+  bookmarks      ProblemBookmark[]
+  likes          ProblemLike[]
+  discussions    ProblemDiscussion[]
+  editorial      ProblemEditorial?
+  reports        ProblemReport[]
   dailyChallenge DailyChallenge?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 }
 
 model TestCase {
@@ -683,5 +699,74 @@ model TeamResource {
   team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   title     String
   url       String
+  createdAt DateTime @default(now())
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId, emoji])
+}
+
+model ProblemBookmark {
+  id        String   @id @default(uuid())
+  problemId String
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([problemId, userId])
+}
+
+model ProblemLike {
+  id        String   @id @default(uuid())
+  problemId String
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isLike    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([problemId, userId])
+}
+
+model ProblemDiscussion {
+  id        String   @id @default(uuid())
+  problemId String
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  isPinned  Boolean  @default(false)
+  isTop     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProblemEditorial {
+  id        String   @id @default(uuid())
+  problemId String   @unique
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  content   String
+  isLocked  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProblemReport {
+  id        String   @id @default(uuid())
+  problemId String
+  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason    String
   createdAt DateTime @default(now())
 }

@@ -9,8 +9,17 @@ const createConversationSchema = z.object({
 const sendMessageSchema = z.object({
   text: z
     .string()
-    .min(1, "Message text cannot be empty")
-    .max(4000),
+    .max(4000)
+    .optional(),
+  fileUrl: z
+    .string()
+    .optional(),
+  fileType: z
+    .string()
+    .optional(),
+  codeLanguage: z
+    .string()
+    .optional()
 });
 
 module.exports = {

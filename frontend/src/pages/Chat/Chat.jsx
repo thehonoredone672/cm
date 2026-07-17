@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import "./Chat.css";
 import { useAuth } from "../../context/AuthContext";
 import { useSocket } from "../../context/SocketContext";
@@ -9,11 +10,16 @@ import {
   sendMessage as apiSendMessage,
   markConversationSeen,
   getTeammates,
+  pinConversation,
+  editMessage,
+  deleteMessage,
+  pinMessage,
+  addReaction,
+  removeReaction
 } from "../../services/chatService";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6"];
+// Helpers
+const COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#14b8a6"];
 const avatarColor = (str = "") => COLORS[str.charCodeAt(0) % COLORS.length];
 const initials = (name = "") =>
   name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2);
@@ -53,8 +59,7 @@ const sameDay = (a, b) => {
   );
 };
 
-// ─── Avatar Component ─────────────────────────────────────────────────────────
-
+// Reusable Components
 function Avatar({ name = "?", size = "md", online = false, isGroup = false }) {
   return (
     <div
@@ -71,103 +76,6 @@ function Avatar({ name = "?", size = "md", online = false, isGroup = false }) {
   );
 }
 
-// ─── Sidebar Contact Row ──────────────────────────────────────────────────────
-
-function ContactRow({ conv, currentUserId, selected, isOnline, onClick }) {
-  const isGroup = !!conv.teamId;
-  const partner = isGroup ? null : conv.participants?.find((p) => p.userId !== currentUserId)?.user;
-  
-  if (!isGroup && !partner) return null;
-
-  const lastMsg = conv.messages?.[0];
-  const preview = lastMsg
-    ? (lastMsg.isDeleted
-        ? "🚫 Message deleted"
-        : (lastMsg.senderId === currentUserId ? "You: " : "") + lastMsg.text)
-    : "No messages yet";
-
-  const chatName = isGroup ? (conv.name || "Team Group Chat") : partner.name;
-
-  return (
-    <button
-      className={`tg-contact${selected ? " tg-contact--active" : ""}`}
-      onClick={onClick}
-    >
-      <Avatar name={chatName} online={isGroup ? false : isOnline(partner.id)} isGroup={isGroup} />
-      <div className="tg-contact__body">
-        <div className="tg-contact__row1">
-          <span className="tg-contact__name">{chatName}</span>
-          <span className="tg-contact__time">
-            {lastMsg ? fmtSidebarTime(lastMsg.createdAt) : ""}
-          </span>
-        </div>
-        <div className="tg-contact__row2">
-          <span className="tg-contact__preview">{preview}</span>
-          {conv.unreadCount > 0 && (
-            <span className="tg-badge">{conv.unreadCount > 99 ? "99+" : conv.unreadCount}</span>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-// ─── Message Bubble ───────────────────────────────────────────────────────────
-
-function MsgBubble({ msg, isOwn, showName, partnerReadAt }) {
-  const wasRead =
-    isOwn &&
-    partnerReadAt &&
-    new Date(partnerReadAt) >= new Date(msg.createdAt);
-
-  return (
-    <div className={`tg-msg tg-msg--${isOwn ? "own" : "other"}`}>
-      {!isOwn && showName && (
-        <div className="tg-msg__name">{msg.sender?.name}</div>
-      )}
-      <div
-        className={`tg-msg__bubble${msg.isDeleted ? " tg-msg__bubble--deleted" : ""}`}
-      >
-        {msg.isDeleted ? (
-          "🚫 This message was deleted"
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {msg.fileUrl && msg.fileType === "IMAGE" && (
-              <img
-                src={msg.fileUrl}
-                alt="attachment"
-                style={{ maxWidth: "100%", maxHeight: "240px", borderRadius: "8px", objectFit: "cover", cursor: "pointer" }}
-                onClick={() => window.open(msg.fileUrl, "_blank")}
-              />
-            )}
-            {msg.fileUrl && msg.fileType === "FILE" && (
-              <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.08)", padding: "8px 12px", borderRadius: "8px" }}>
-                <span style={{ fontSize: "20px" }}>📁</span>
-                <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                  <span style={{ fontSize: "12px", fontWeight: "bold" }}>Attachment File</span>
-                  <a href={msg.fileUrl} download style={{ fontSize: "11px", color: "var(--primary)", textDecoration: "underline" }}>Download File</a>
-                </div>
-              </div>
-            )}
-            {msg.text && msg.text !== "Sent an attachment" && <span>{msg.text}</span>}
-          </div>
-        )}
-      </div>
-      <div className="tg-msg__meta">
-        <span>{fmtTime(msg.createdAt)}</span>
-        {msg._optimistic && <span style={{ opacity: 0.5 }}>⌛</span>}
-        {isOwn && !msg._optimistic && (
-          <span className={wasRead ? "tg-msg__seen" : ""}>
-            {wasRead ? "✓✓" : "✓"}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Chat Page ───────────────────────────────────────────────────────────
-
 export default function Chat() {
   const { user } = useAuth();
   const { socket, connected, isUserOnline } = useSocket();
@@ -176,22 +84,32 @@ export default function Chat() {
   const [teammates, setTeammates] = useState([]);
   const [selectedConv, setSelectedConv] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [search, setSearch] = useState("");
   
-  // Search query for messages inside current conversation
+  // Search & Filters state
+  const [search, setSearch] = useState("");
   const [msgQuery, setMsgQuery] = useState("");
-
+  const [activeFilter, setActiveFilter] = useState("ALL"); // ALL, UNREAD, PINNED, PRIVATE, TEAMS
+  
+  // Loading & Action states
   const [loadingConvs, setLoadingConvs] = useState(true);
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sending, setSending] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
 
+  // Input states
   const [text, setText] = useState("");
+  const [codeLanguage, setCodeLanguage] = useState(""); // empty means plain text message
+  const [isCodeSnippetsMode, setIsCodeSnippetsMode] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [showPinnedOnly, setShowPinnedOnly] = useState(false);
+
+  // Message edits & replies
+  const [editingMsg, setEditingMsg] = useState(null);
+  const [editText, setEditText] = useState("");
+
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const [partnerReadAt, setPartnerReadAt] = useState(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-
-  // Emoji picker visibility state
-  const [emojiOpen, setEmojiOpen] = useState(false);
 
   const selectedConvRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -202,81 +120,50 @@ export default function Chat() {
 
   useEffect(() => { selectedConvRef.current = selectedConv; }, [selectedConv]);
 
-  // ── Load data ──────────────────────────────────────────────────
-
   useEffect(() => {
-    (async () => {
-      try {
-        setLoadingConvs(true);
-        const [convs, tms] = await Promise.all([getConversations(), getTeammates()]);
-        setConversations(convs);
-        setTeammates(tms);
-      } catch (err) {
-        console.error("[Chat] initial load:", err);
-      } finally {
-        setLoadingConvs(false);
-      }
-    })();
+    loadChatData();
   }, []);
 
-  // ── Socket: join conversation room ─────────────────────────────
+  const loadChatData = async () => {
+    try {
+      setLoadingConvs(true);
+      const [convs, tms] = await Promise.all([getConversations(), getTeammates()]);
+      setConversations(convs);
+      setTeammates(tms);
+    } catch (err) {
+      console.error("[Chat] initial load:", err);
+    } finally {
+      setLoadingConvs(false);
+    }
+  };
 
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Socket setup
   useEffect(() => {
     if (!socket || !connected || !selectedConv) return;
     socket.emit("join_conversation", selectedConv.id);
     return () => socket.emit("leave_conversation", selectedConv.id);
   }, [socket, connected, selectedConv?.id]);
 
-  // ── Socket: event listeners ────────────────────────────────────
-
   useEffect(() => {
     if (!socket) return;
 
     const onMessage = (msg) => {
       const cur = selectedConvRef.current;
-
-      // If this conversation is open, update the messages list
       if (cur?.id === msg.conversationId) {
         setMessages((prev) => {
           if (prev.some((m) => m.id === msg.id)) return prev;
-          // Replace optimistic message if it matches
-          const optIdx = prev.findIndex(
-            (m) => m._optimistic && m.text === msg.text && m.senderId === msg.senderId
-          );
-          if (optIdx !== -1) {
-            const next = [...prev];
-            next[optIdx] = msg;
-            return next;
-          }
           return [...prev, msg];
         });
-        // Auto-mark as read if this chat is open and message is from partner
         if (msg.senderId !== user.id) {
           markConversationSeen(cur.id).catch(() => {});
         }
       }
-
-      // Always update the sidebar conversation list
-      setConversations((prev) =>
-        prev
-          .map((c) =>
-            c.id === msg.conversationId
-              ? {
-                  ...c,
-                  messages: [msg],
-                  unreadCount:
-                    cur?.id === msg.conversationId || msg.senderId === user.id
-                      ? 0
-                      : (c.unreadCount || 0) + 1,
-                }
-              : c
-          )
-          .sort(
-            (a, b) =>
-              new Date(b.messages?.[0]?.createdAt || b.updatedAt) -
-              new Date(a.messages?.[0]?.createdAt || a.updatedAt)
-          )
-      );
+      loadChatData();
     };
 
     const onDeleted = ({ messageId }) => {
@@ -289,6 +176,41 @@ export default function Chat() {
       );
     };
 
+    const onEdited = (msg) => {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
+    };
+
+    const onPinned = (msg) => {
+      setMessages((prev) => prev.map((m) => (m.id === msg.id ? msg : m)));
+    };
+
+    const onReactionAdded = ({ messageId, reaction }) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          const nextReactions = [...(m.reactions || [])];
+          if (!nextReactions.some((r) => r.id === reaction.id)) {
+            nextReactions.push(reaction);
+          }
+          return { ...m, reactions: nextReactions };
+        })
+      );
+    };
+
+    const onReactionRemoved = ({ messageId, emoji, userId }) => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (m.id !== messageId) return m;
+          return {
+            ...m,
+            reactions: (m.reactions || []).filter(
+              (r) => !(r.userId === userId && r.emoji === emoji)
+            ),
+          };
+        })
+      );
+    };
+
     const onTyping = ({ conversationId }) => {
       if (selectedConvRef.current?.id === conversationId) setIsPartnerTyping(true);
     };
@@ -298,16 +220,17 @@ export default function Chat() {
     };
 
     const onSeen = ({ conversationId, userId, seenAt }) => {
-      if (
-        selectedConvRef.current?.id === conversationId &&
-        userId !== user.id
-      ) {
+      if (selectedConvRef.current?.id === conversationId && userId !== user.id) {
         setPartnerReadAt(seenAt);
       }
     };
 
     socket.on("receive_message", onMessage);
     socket.on("message_deleted", onDeleted);
+    socket.on("message_edited", onEdited);
+    socket.on("message_pinned_toggled", onPinned);
+    socket.on("reaction_added", onReactionAdded);
+    socket.on("reaction_removed", onReactionRemoved);
     socket.on("typing", onTyping);
     socket.on("stop_typing", onStopTyping);
     socket.on("seen", onSeen);
@@ -315,32 +238,23 @@ export default function Chat() {
     return () => {
       socket.off("receive_message", onMessage);
       socket.off("message_deleted", onDeleted);
+      socket.off("message_edited", onEdited);
+      socket.off("message_pinned_toggled", onPinned);
+      socket.off("reaction_added", onReactionAdded);
+      socket.off("reaction_removed", onReactionRemoved);
       socket.off("typing", onTyping);
       socket.off("stop_typing", onStopTyping);
       socket.off("seen", onSeen);
     };
   }, [socket, user.id]);
 
-  // ── Auto-scroll when new messages arrive ───────────────────────
-
   useEffect(() => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-    if (nearBottom) scrollToBottom("smooth");
+    scrollToBottom("smooth");
   }, [messages, isPartnerTyping]);
 
   const scrollToBottom = (behavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   };
-
-  const onScroll = useCallback(() => {
-    const el = messagesContainerRef.current;
-    if (!el) return;
-    setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 300);
-  }, []);
-
-  // ── Select a conversation ──────────────────────────────────────
 
   const selectConv = async (conv) => {
     if (selectedConv?.id === conv.id) return;
@@ -348,6 +262,7 @@ export default function Chat() {
     setMessages([]);
     setIsPartnerTyping(false);
     setPartnerReadAt(null);
+    setShowPinnedOnly(false);
     try {
       setLoadingMsgs(true);
       const data = await getMessages(conv.id);
@@ -355,9 +270,7 @@ export default function Chat() {
       const partner = conv.participants?.find((p) => p.userId !== user.id);
       setPartnerReadAt(partner?.lastReadAt || null);
       await markConversationSeen(conv.id);
-      setConversations((prev) =>
-        prev.map((c) => (c.id === conv.id ? { ...c, unreadCount: 0 } : c))
-      );
+      loadChatData();
     } catch (err) {
       console.error("[Chat] loadMessages:", err);
     } finally {
@@ -366,25 +279,19 @@ export default function Chat() {
     }
   };
 
-  // ── Start new chat with teammate ───────────────────────────────
-
   const startChat = async (teammate) => {
     try {
       const conv = await createConversation(teammate.id);
-      setConversations((prev) =>
-        prev.some((c) => c.id === conv.id) ? prev : [conv, ...prev]
-      );
+      loadChatData();
       selectConv(conv);
     } catch (err) {
       console.error("[Chat] startChat:", err);
     }
   };
 
-  // ── Send message ───────────────────────────────────────────────
-
   const handleSend = async () => {
     const trimmed = text.trim();
-    if (!trimmed || !selectedConv || sending) return;
+    if (!trimmed && !sending) return;
 
     setText("");
     if (textareaRef.current) {
@@ -393,30 +300,12 @@ export default function Chat() {
     setSending(true);
     if (socket && selectedConv) socket.emit("stop_typing", selectedConv.id);
 
-    const tempId = `_opt_${Date.now()}`;
-    const optimistic = {
-      id: tempId,
-      _optimistic: true,
-      conversationId: selectedConv.id,
-      senderId: user.id,
-      text: trimmed,
-      createdAt: new Date().toISOString(),
-      sender: { id: user.id, name: user.name },
-      isDeleted: false,
-    };
-    setMessages((prev) => [...prev, optimistic]);
-
     try {
-      const msg = await apiSendMessage(selectedConv.id, trimmed);
-      setMessages((prev) => prev.map((m) => (m.id === tempId ? msg : m)));
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === selectedConv.id ? { ...c, messages: [msg] } : c
-        )
-      );
+      const lang = isCodeSnippetsMode && codeLanguage ? codeLanguage : null;
+      await apiSendMessage(selectedConv.id, trimmed, null, null, lang);
+      loadChatData();
     } catch (err) {
       console.error("[Chat] send failed:", err);
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
     } finally {
       setSending(false);
     }
@@ -427,39 +316,14 @@ export default function Chat() {
     if (!file || !selectedConv) return;
 
     const fileType = file.type.startsWith("image/") ? "IMAGE" : "FILE";
-
-    // Read as Base64 Data URL
     const reader = new FileReader();
     reader.onload = async () => {
-      const base64Url = reader.result;
       setSending(true);
-      
-      const tempId = `_opt_${Date.now()}`;
-      const optimistic = {
-        id: tempId,
-        _optimistic: true,
-        conversationId: selectedConv.id,
-        senderId: user.id,
-        text: "Sent an attachment",
-        fileUrl: base64Url,
-        fileType,
-        createdAt: new Date().toISOString(),
-        sender: { id: user.id, name: user.name },
-        isDeleted: false,
-      };
-      setMessages((prev) => [...prev, optimistic]);
-
       try {
-        const msg = await apiSendMessage(selectedConv.id, "", base64Url, fileType);
-        setMessages((prev) => prev.map((m) => (m.id === tempId ? msg : m)));
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === selectedConv.id ? { ...c, messages: [msg] } : c
-          )
-        );
+        await apiSendMessage(selectedConv.id, file.name, reader.result, fileType);
+        loadChatData();
       } catch (err) {
         console.error("[Chat] send attachment failed:", err);
-        setMessages((prev) => prev.filter((m) => m.id !== tempId));
       } finally {
         setSending(false);
       }
@@ -467,20 +331,76 @@ export default function Chat() {
     reader.readAsDataURL(file);
   };
 
-  const handleSelectEmoji = (emoji) => {
-    setText((prev) => prev + emoji);
-    setEmojiOpen(false);
-    if (textareaRef.current) {
-      textareaRef.current.focus();
+  // Pinned Conversation handler
+  const handlePinConversation = async (convId, isPinned) => {
+    try {
+      await pinConversation(convId, isPinned);
+      triggerToast(isPinned ? "Conversation pinned to top." : "Conversation unpinned.");
+      loadChatData();
+    } catch (e) {
+      triggerToast("Failed to pin conversation.");
+    }
+  };
+
+  // Edit Message handler
+  const handleEditMessage = async (msgId, originalText) => {
+    setEditingMsg(msgId);
+    setEditText(originalText);
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editText.trim() || !editingMsg) return;
+    try {
+      await editMessage(selectedConv.id, editingMsg, editText);
+      setEditingMsg(null);
+      setEditText("");
+      triggerToast("Message updated.");
+      fetchTeamDetails();
+    } catch (e) {
+      triggerToast("Failed to edit message.");
+    }
+  };
+
+  // Delete message handler
+  const handleDeleteMsg = async (msgId) => {
+    if (!window.confirm("Delete this message for everyone?")) return;
+    try {
+      await deleteMessage(selectedConv.id, msgId);
+      triggerToast("Message deleted.");
+    } catch (e) {
+      triggerToast("Failed to delete message.");
+    }
+  };
+
+  // Pin Message handler
+  const handlePinMsg = async (msgId, currentPin) => {
+    try {
+      await pinMessage(selectedConv.id, msgId, !currentPin);
+      triggerToast(!currentPin ? "Message pinned." : "Message unpinned.");
+    } catch (e) {
+      triggerToast("Failed to pin message.");
+    }
+  };
+
+  // Reactions handlers
+  const handleToggleReaction = async (msgId, reactionsList, emoji) => {
+    const existing = reactionsList?.find(r => r.userId === user.id && r.emoji === emoji);
+    try {
+      if (existing) {
+        await removeReaction(selectedConv.id, msgId, emoji);
+      } else {
+        await addReaction(selectedConv.id, msgId, emoji);
+      }
+    } catch (e) {
+      triggerToast("Failed to update reaction.");
     }
   };
 
   const handleTextChange = (e) => {
     setText(e.target.value);
-    // Auto-grow textarea
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
-    // Typing indicator
     if (socket && selectedConv) {
       socket.emit("typing", selectedConv.id);
       clearTimeout(typingTimerRef.current);
@@ -497,114 +417,159 @@ export default function Chat() {
     }
   };
 
-  // ── Derived data ───────────────────────────────────────────────
+  // Filtered & Pinned Sorting Conversations List
+  const filteredAndSortedConvs = useMemo(() => {
+    let list = conversations.filter((c) => {
+      const isGroupChat = !!c.teamId;
+      const partner = isGroupChat ? null : c.participants?.find((p) => p.userId !== user.id)?.user;
+      
+      const matchesSearch = isGroupChat 
+        ? (c.name || "").toLowerCase().includes(search.toLowerCase())
+        : partner?.name.toLowerCase().includes(search.toLowerCase());
 
-  const filteredConvs = search.trim()
-    ? conversations.filter((c) => {
-        const partner = c.participants?.find((p) => p.userId !== user.id)?.user;
-        return partner?.name.toLowerCase().includes(search.toLowerCase());
-      })
-    : conversations;
+      if (!matchesSearch) return false;
 
-  const unconnectedTeammates = teammates.filter(
-    (tm) =>
-      !conversations.some((c) =>
-        c.participants?.some((p) => p.userId === tm.id)
-      )
-  );
+      // Filter matches
+      if (activeFilter === "UNREAD") return c.unreadCount > 0;
+      if (activeFilter === "PINNED") return c.isPinned;
+      if (activeFilter === "PRIVATE") return !isGroupChat;
+      if (activeFilter === "TEAMS") return isGroupChat;
+
+      return true;
+    });
+
+    // Sort pinned conversations first
+    list.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+    return list;
+  }, [conversations, search, activeFilter, user]);
+
+  const onlineTeammates = useMemo(() => {
+    return teammates.filter(t => isUserOnline(t.id));
+  }, [teammates, isUserOnline]);
 
   const isGroup = selectedConv && !!selectedConv.teamId;
-  const partner = isGroup
+  const partnerUser = isGroup
     ? null
     : selectedConv?.participants?.find((p) => p.userId !== user.id)?.user;
-  const chatTitle = isGroup ? (selectedConv.name || "Team Group Chat") : (partner?.name || "Unknown");
+  const chatTitle = isGroup ? (selectedConv.name || "Team Workspace Chat") : (partnerUser?.name || "Developer");
 
-  const filteredMessages = msgQuery.trim()
-    ? messages.filter((m) => m.text?.toLowerCase().includes(msgQuery.toLowerCase()))
-    : messages;
-
-  // ── Render ─────────────────────────────────────────────────────
+  // Display either all messages or pinned messages only
+  const filteredMessages = useMemo(() => {
+    let list = msgQuery.trim()
+      ? messages.filter((m) => m.text?.toLowerCase().includes(msgQuery.toLowerCase()))
+      : messages;
+    if (showPinnedOnly) {
+      list = list.filter(m => m.isPinned);
+    }
+    return list;
+  }, [messages, msgQuery, showPinnedOnly]);
 
   return (
     <div className="tg-chat">
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div className="tg-toast" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+            <span>💬 {toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* ─── Left Sidebar ─────────────────────────────────── */}
+      {/* LEFT SIDEBAR */}
       <aside className="tg-sidebar">
         <div className="tg-sidebar__top">
           <div className="tg-sidebar__title-row">
-            <h1 className="tg-sidebar__title">Messages</h1>
-            {connected ? (
-              <span className="tg-conn-badge tg-conn-badge--on">● Live</span>
-            ) : (
-              <span className="tg-conn-badge tg-conn-badge--off">● Offline</span>
-            )}
+            <h1 className="tg-sidebar__title">Chat Workspaces</h1>
+            <span className={`tg-conn-badge ${connected ? "tg-conn-badge--on" : "tg-conn-badge--off"}`}>
+              {connected ? "● Connected" : "● Offline"}
+            </span>
           </div>
+
           <div className="tg-search">
-            <svg className="tg-search__icon" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
             <input
-              placeholder="Search teammates…"
+              placeholder="Search conversations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+          </div>
+
+          {/* Online Teammates row list */}
+          {onlineTeammates.length > 0 && (
+            <div className="online-users-row">
+              {onlineTeammates.map(tm => (
+                <div key={tm.id} className="online-avatar-card" onClick={() => startChat(tm)} title={`Open chat with ${tm.name}`}>
+                  <Avatar name={tm.name} online={true} size="sm" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Filters category row */}
+          <div className="sidebar-filters-row">
+            {["ALL", "UNREAD", "PINNED", "PRIVATE", "TEAMS"].map(f => (
+              <button 
+                key={f} 
+                className={`filter-badge ${activeFilter === f ? "active" : ""}`}
+                onClick={() => setActiveFilter(f)}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
 
         <div className="tg-sidebar__list">
           {loadingConvs ? (
-            [1, 2, 3, 4].map((i) => (
-              <div key={i} className="tg-skeleton" style={{ margin: "6px 12px", height: 62, borderRadius: 12 }} />
+            [1, 2, 3].map((i) => (
+              <div key={i} className="tg-skeleton" style={{ margin: "12px", height: 60, borderRadius: 8 }} />
             ))
           ) : (
             <>
-              {filteredConvs.length > 0 && (
-                <>
-                  <div className="tg-section-label">Conversations</div>
-                  {filteredConvs.map((conv) => (
-                    <ContactRow
-                      key={conv.id}
-                      conv={conv}
-                      currentUserId={user.id}
-                      selected={selectedConv?.id === conv.id}
-                      isOnline={isUserOnline}
-                      onClick={() => selectConv(conv)}
+              {filteredAndSortedConvs.map((conv) => (
+                <div key={conv.id} style={{ position: "relative" }}>
+                  <button 
+                    className={`tg-contact ${selectedConv?.id === conv.id ? "tg-contact--active" : ""}`}
+                    onClick={() => selectConv(conv)}
+                  >
+                    <Avatar 
+                      name={isGroup ? (conv.name || "Team") : (conv.participants?.find(p => p.userId !== user.id)?.user?.name || "User")} 
+                      online={isGroup ? false : isUserOnline(conv.participants?.find(p => p.userId !== user.id)?.userId)} 
+                      isGroup={isGroup} 
                     />
-                  ))}
-                </>
-              )}
-
-              {!search && unconnectedTeammates.length > 0 && (
-                <>
-                  <div className="tg-section-label">New Chat</div>
-                  {unconnectedTeammates.map((tm) => (
-                    <button
-                      key={tm.id}
-                      className="tg-contact"
-                      onClick={() => startChat(tm)}
-                    >
-                      <Avatar name={tm.name} online={isUserOnline(tm.id)} />
-                      <div className="tg-contact__body">
-                        <div className="tg-contact__row1">
-                          <span className="tg-contact__name">{tm.name}</span>
-                        </div>
-                        <div className="tg-contact__row2">
-                          <span className="tg-contact__preview" style={{ color: "var(--primary)" }}>
-                            Start conversation →
-                          </span>
-                        </div>
+                    <div className="tg-contact__body">
+                      <div className="tg-contact__row1">
+                        <span className="tg-contact__name">
+                          {conv.isPinned ? "📌 " : ""}{isGroup ? (conv.name || "Team Chat") : (conv.participants?.find(p => p.userId !== user.id)?.user?.name || "User")}
+                        </span>
+                        <span className="tg-contact__time">
+                          {conv.messages?.[0] ? fmtSidebarTime(conv.messages[0].createdAt) : ""}
+                        </span>
                       </div>
-                    </button>
-                  ))}
-                </>
-              )}
+                      <div className="tg-contact__row2">
+                        <span className="tg-contact__preview">
+                          {conv.messages?.[0]?.isDeleted ? "🚫 Deleted" : conv.messages?.[0]?.text || "No messages"}
+                        </span>
+                        {conv.unreadCount > 0 && <span className="tg-badge">{conv.unreadCount}</span>}
+                      </div>
+                    </div>
+                  </button>
 
-              {filteredConvs.length === 0 && unconnectedTeammates.length === 0 && (
+                  {/* Pin conversation toggle trigger */}
+                  <button 
+                    className="btn-pin-conversation"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePinConversation(conv.id, !conv.isPinned);
+                    }}
+                    title={conv.isPinned ? "Unpin Chat" : "Pin Chat"}
+                  >
+                    {conv.isPinned ? "📌" : "📍"}
+                  </button>
+                </div>
+              ))}
+
+              {filteredAndSortedConvs.length === 0 && (
                 <div className="tg-sidebar__empty">
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
-                  <div>No teammates yet.</div>
-                  <div style={{ fontSize: 12, marginTop: 4 }}>Accept invites to start chatting.</div>
+                  <span>💬 No conversations found</span>
                 </div>
               )}
             </>
@@ -612,234 +577,282 @@ export default function Chat() {
         </div>
       </aside>
 
-      {/* ─── Right: Message Area ───────────────────────────── */}
-      <main className={`tg-main${!selectedConv ? " tg-main--empty" : ""}`}>
+      {/* MAIN CHAT AREA */}
+      <main className={`tg-main ${!selectedConv ? "tg-main--empty" : ""}`}>
         {!selectedConv ? (
-          <>
-            <div className="tg-main--empty-icon">
-              <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-            </div>
-            <h3 style={{ margin: "0 0 8px", color: "var(--text-primary)" }}>
-              Select a conversation
-            </h3>
-            <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>
-              Choose a teammate from the left to start messaging
-            </p>
-          </>
+          <div className="empty-chat-container">
+            <span style={{ fontSize: "48px" }}>💬</span>
+            <h3>Select a conversation</h3>
+            <p>Select an active DM conversation or team workspace from the left to start sending messages.</p>
+          </div>
         ) : (
           <>
-            {/* Header */}
-            <div className="tg-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Avatar
-                  name={chatTitle}
-                  online={isGroup ? false : isUserOnline(partner?.id)}
-                  isGroup={isGroup}
+            {/* Chat Header */}
+            <div className="tg-header">
+              <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                <Avatar 
+                  name={chatTitle} 
+                  online={isGroup ? false : isUserOnline(partnerUser?.id)} 
+                  isGroup={isGroup} 
                 />
-                <div className="tg-header__info">
+                <div>
                   <div className="tg-header__name">{chatTitle}</div>
-                  <div
-                    className={`tg-header__status${
-                      !isGroup && isPartnerTyping
-                        ? " tg-header__status--typing"
-                        : !isGroup && isUserOnline(partner?.id)
-                        ? " tg-header__status--online"
-                        : ""
-                    }`}
-                  >
-                    {isGroup
-                      ? `${selectedConv.participants?.length || 0} members`
-                      : (isPartnerTyping
-                          ? "typing…"
-                          : isUserOnline(partner?.id)
-                          ? "online"
-                          : "last seen recently")}
+                  <div className="tg-header__status">
+                    {isPartnerTyping ? (
+                      <span className="tg-header__status--typing">typing...</span>
+                    ) : isGroup ? (
+                      "Team Channel Workspace"
+                    ) : isUserOnline(partnerUser?.id) ? (
+                      <span className="tg-header__status--online">Online</span>
+                    ) : (
+                      "Offline"
+                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Message Search */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <input
-                  type="text"
-                  placeholder="🔍 Search messages..."
-                  value={msgQuery}
-                  onChange={(e) => setMsgQuery(e.target.value)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "15px",
-                    border: "1px solid var(--border)",
-                    background: "var(--background)",
-                    color: "var(--text-primary)",
-                    fontSize: "12px",
-                    outline: "none",
-                    width: "160px"
-                  }}
+              {/* Message Search & Pin Toggles */}
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <input 
+                  type="text" 
+                  value={msgQuery} 
+                  onChange={(e) => setMsgQuery(e.target.value)} 
+                  placeholder="Search messages..." 
+                  className="message-search-input"
                 />
-                <span className={`tg-conn-badge${connected ? " tg-conn-badge--on" : " tg-conn-badge--off"}`}>
-                  {connected ? "● Connected" : "● Reconnecting"}
-                </span>
+
+                <button 
+                  className={`btn-pinned-toggle ${showPinnedOnly ? "active" : ""}`}
+                  onClick={() => setShowPinnedOnly(!showPinnedOnly)}
+                  title="Show Pinned Messages Only"
+                >
+                  📌 Pinned
+                </button>
               </div>
             </div>
 
-            {/* Messages */}
-            <div
-              className="tg-messages"
-              ref={messagesContainerRef}
-              onScroll={onScroll}
-            >
+            {/* Messages container list */}
+            <div className="tg-messages" ref={messagesContainerRef}>
               {loadingMsgs ? (
-                [1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    className="tg-skeleton"
-                    style={{
-                      width: i % 2 === 0 ? "50%" : "38%",
-                      height: 44,
-                      borderRadius: 18,
-                      alignSelf: i % 2 === 0 ? "flex-end" : "flex-start",
-                      margin: "3px 0",
-                    }}
-                  />
+                [1, 2, 3].map(i => (
+                  <div key={i} className="tg-skeleton" style={{ width: "40%", height: "45px", margin: "10px 0", borderRadius: "12px" }} />
                 ))
               ) : filteredMessages.length === 0 ? (
                 <div className="tg-messages__empty">
-                  <div style={{ fontSize: 36 }}>💬</div>
-                  <div>No matching messages found.</div>
+                  <span>No messages found in this search filter.</span>
                 </div>
               ) : (
-                <>
-                  {filteredMessages.map((msg, idx) => {
-                    const isOwn = msg.senderId === user.id;
-                    const prev = filteredMessages[idx - 1];
-                    const showDate = !prev || !sameDay(prev.createdAt, msg.createdAt);
-                    const showName =
-                      !isOwn &&
-                      (!prev || prev.senderId !== msg.senderId || showDate);
+                filteredMessages.map((msg, idx) => {
+                  const isOwn = msg.senderId === user.id;
+                  const prevMsg = filteredMessages[idx - 1];
+                  const showDateDivider = !prevMsg || !sameDay(prevMsg.createdAt, msg.createdAt);
+                  const partnerRead = partnerReadAt && new Date(partnerReadAt) >= new Date(msg.createdAt);
 
-                    return (
-                      <div key={msg.id}>
-                        {showDate && (
-                          <div className="tg-date-divider">
-                            <span>{fmtDateDivider(msg.createdAt)}</span>
+                  return (
+                    <div key={msg.id}>
+                      {showDateDivider && (
+                        <div className="tg-date-divider">
+                          <span>{fmtDateDivider(msg.createdAt)}</span>
+                        </div>
+                      )}
+
+                      <div className={`tg-msg ${isOwn ? "tg-msg--own" : "tg-msg--other"}`}>
+                        {!isOwn && <span className="tg-msg__name">{msg.sender?.name}</span>}
+                        
+                        <div className="tg-msg-bubble-container">
+                          
+                          {/* Pin indicator */}
+                          {msg.isPinned && <span className="pinned-msg-indicator" title="Pinned Message">📌</span>}
+
+                          <div className={`tg-msg__bubble ${msg.isDeleted ? "tg-msg__bubble--deleted" : ""}`}>
+                            {msg.isDeleted ? (
+                              "This message was deleted."
+                            ) : msg.codeLanguage ? (
+                              /* Code snippet display */
+                              <div className="code-snippet-bubble">
+                                <div className="code-header">
+                                  <span>{msg.codeLanguage} snippet</span>
+                                  <button onClick={() => {
+                                    navigator.clipboard.writeText(msg.text);
+                                    triggerToast("Code copied to clipboard!");
+                                  }}>Copy Code</button>
+                                </div>
+                                <pre><code>{msg.text}</code></pre>
+                              </div>
+                            ) : msg.fileUrl ? (
+                              msg.fileType === "IMAGE" ? (
+                                <img src={msg.fileUrl} alt="shared asset" className="chat-image-attachment" />
+                              ) : (
+                                <div className="chat-file-attachment">
+                                  <span>📁 {msg.text}</span>
+                                  <a href={msg.fileUrl} download>Download</a>
+                                </div>
+                              )
+                            ) : (
+                              <span>{msg.text}</span>
+                            )}
+                          </div>
+
+                          {/* Hover popover actions overlay */}
+                          {!msg.isDeleted && (
+                            <div className="message-hover-actions">
+                              {isOwn && (
+                                <button onClick={() => handleEditMessage(msg.id, msg.text)} title="Edit Message">✏️</button>
+                              )}
+                              <button onClick={() => handlePinMsg(msg.id, msg.isPinned)} title={msg.isPinned ? "Unpin" : "Pin"}>📌</button>
+                              {isOwn && (
+                                <button onClick={() => handleDeleteMsg(msg.id)} title="Delete Message">🗑️</button>
+                              )}
+
+                              {/* Quick reaction emojis */}
+                              {["👍", "❤️", "😂", "🎉"].map(emoji => (
+                                <button 
+                                  key={emoji} 
+                                  onClick={() => handleToggleReaction(msg.id, msg.reactions, emoji)}
+                                  className="reaction-emoji-btn"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                        </div>
+
+                        {/* Display existing reactions */}
+                        {msg.reactions && msg.reactions.length > 0 && (
+                          <div className="message-reactions-row">
+                            {Array.from(new Set(msg.reactions.map(r => r.emoji))).map(emoji => {
+                              const count = msg.reactions.filter(r => r.emoji === emoji).length;
+                              const userReacted = msg.reactions.some(r => r.userId === user.id && r.emoji === emoji);
+                              
+                              return (
+                                <span 
+                                  key={emoji} 
+                                  className={`reaction-badge ${userReacted ? "active" : ""}`}
+                                  onClick={() => handleToggleReaction(msg.id, msg.reactions, emoji)}
+                                >
+                                  {emoji} {count}
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
-                        <MsgBubble
-                          msg={msg}
-                          isOwn={isOwn}
-                          showName={showName}
-                          partnerReadAt={partnerReadAt}
-                        />
+
+                        <div className="tg-msg__meta">
+                          <span>{fmtTime(msg.createdAt)}</span>
+                          {isOwn && (
+                            <span className={partnerRead ? "tg-msg__seen" : ""}>
+                              {partnerRead ? "✓✓" : "✓"}
+                            </span>
+                          )}
+                          {msg.isEdited && <span className="edited-indicator">(edited)</span>}
+                        </div>
+
                       </div>
-                    );
-                  })}
-
-                  {isPartnerTyping && (
-                    <div className="tg-typing">
-                      <div className="tg-typing__dot" />
-                      <div className="tg-typing__dot" />
-                      <div className="tg-typing__dot" />
                     </div>
-                  )}
-                  <div ref={messagesEndRef} />
-                </>
-              )}
-
-              {showScrollBtn && (
-                <button
-                  className="tg-scroll-btn"
-                  onClick={() => scrollToBottom("smooth")}
-                  aria-label="Scroll to bottom"
-                >
-                  ↓
-                </button>
+                  );
+                })
               )}
             </div>
 
             {/* Input bar */}
-            <div className="tg-input-bar" style={{ display: "flex", gap: "10px", alignItems: "center", position: "relative" }}>
-              {/* File Attachment Hidden Input */}
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-              />
-              <button
-                className="tg-send-btn"
-                style={{ background: "transparent", color: "var(--text-secondary)", minWidth: "40px" }}
-                onClick={() => fileInputRef.current?.click()}
-                title="Attach file or image"
+            <div className="tg-input-bar">
+              {/* Image / Asset attachment input */}
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: "none" }} />
+              
+              <button 
+                type="button" 
+                onClick={() => fileInputRef.current?.click()} 
+                className="tg-send-btn" 
+                style={{ background: "transparent" }}
+                title="Attach file"
               >
                 📎
               </button>
 
-              <div className="tg-input-bar__area" style={{ flex: 1 }}>
+              <button 
+                type="button" 
+                className={`tg-send-btn ${isCodeSnippetsMode ? "active" : ""}`}
+                style={{ background: "transparent" }}
+                onClick={() => setIsCodeSnippetsMode(!isCodeSnippetsMode)}
+                title="Toggle Code Snippet Mode"
+              >
+                💻
+              </button>
+
+              <div className="tg-input-bar__area">
+                {isCodeSnippetsMode && (
+                  <select 
+                    value={codeLanguage} 
+                    onChange={(e) => setCodeLanguage(e.target.value)}
+                    className="code-language-selector"
+                  >
+                    <option value="">Choose code language...</option>
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="c">C / C++</option>
+                    <option value="json">JSON</option>
+                    <option value="markdown">Markdown</option>
+                  </select>
+                )}
+
                 <textarea
                   ref={textareaRef}
-                  className="tg-input-bar__textarea"
-                  placeholder="Write a message… (Enter to send)"
-                  rows={1}
+                  placeholder={isCodeSnippetsMode ? "Paste your code snippet here..." : "Write a message... (Enter to send)"}
                   value={text}
                   onChange={handleTextChange}
                   onKeyDown={handleKeyDown}
+                  className="tg-input-bar__textarea"
                 />
               </div>
 
-              {/* Emoji Trigger */}
+              {/* Emoji selector */}
               <div style={{ position: "relative" }}>
-                <button
-                  className="tg-send-btn"
-                  style={{ background: "transparent", minWidth: "40px", fontSize: "16px" }}
+                <button 
+                  className="tg-send-btn" 
+                  style={{ background: "transparent" }}
                   onClick={() => setEmojiOpen(!emojiOpen)}
-                  title="Insert emoji"
+                  title="Emoji popover"
                 >
                   😊
                 </button>
                 {emojiOpen && (
-                  <div style={{
-                    position: "absolute",
-                    bottom: "50px",
-                    right: "0",
-                    background: "var(--surface)",
-                    border: "1.5px solid var(--border)",
-                    padding: "8px",
-                    borderRadius: "12px",
-                    display: "grid",
-                    gridTemplateColumns: "repeat(5, 1fr)",
-                    gap: "6px",
-                    zIndex: 100,
-                    boxShadow: "0 4px 20px rgba(0,0,0,0.3)"
-                  }}>
-                    {["💻", "🚀", "🔥", "👍", "😂", "❤️", "👀", "🎉", "🐛", "💡"].map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleSelectEmoji(emoji)}
-                        style={{ background: "transparent", border: "none", fontSize: "20px", cursor: "pointer", padding: "4px" }}
-                      >
-                        {emoji}
-                      </button>
+                  <div className="emoji-picker-popover">
+                    {["👍", "❤️", "😂", "🎉", "💻", "🔥", "👀", "🚀", "🐛", "💡"].map(emoji => (
+                      <button key={emoji} onClick={() => handleSelectEmoji(emoji)}>{emoji}</button>
                     ))}
                   </div>
                 )}
               </div>
 
-              <button
-                className="tg-send-btn"
-                onClick={handleSend}
-                disabled={(!text.trim()) && !sending}
-                aria-label="Send message"
-              >
-                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z" />
-                </svg>
+              <button className="tg-send-btn" onClick={handleSend} disabled={!text.trim() && !sending}>
+                🚀
               </button>
             </div>
           </>
         )}
       </main>
+
+      {/* Edit message modal */}
+      <AnimatePresence>
+        {editingMsg && (
+          <div className="create-modal-overlay">
+            <motion.div className="create-modal-content" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3>Edit Message</h3>
+              <form onSubmit={handleEditSubmit} className="modal-form">
+                <textarea rows="3" value={editText} onChange={(e) => setEditText(e.target.value)} required />
+                <div className="modal-actions">
+                  <button type="submit" className="btn-primary">Save Changes</button>
+                  <button type="button" className="btn-secondary" onClick={() => setEditingMsg(null)}>Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
