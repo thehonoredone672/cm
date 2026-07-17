@@ -242,6 +242,125 @@ const saveLanguagePreferenceHandler = async (req, res, next) => {
   }
 };
 
+// ─── Submission History & Statistics handlers ──────────────────────────────────
+
+const getUserSubmissionsHandler = async (req, res, next) => {
+  try {
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where = { userId: req.user.id };
+
+    if (req.query.problem) {
+      where.problem = { title: { contains: req.query.problem, mode: "insensitive" } };
+    }
+    if (req.query.language) {
+      where.language = req.query.language;
+    }
+    if (req.query.verdict) {
+      where.status = req.query.verdict;
+    }
+
+    let orderBy = { createdAt: "desc" };
+    if (req.query.sort) {
+      if (req.query.sort === "OLDEST") {
+        orderBy = { createdAt: "asc" };
+      } else if (req.query.sort === "RUNTIME") {
+        orderBy = { executionTime: "asc" };
+      } else if (req.query.sort === "MEMORY") {
+        orderBy = { memoryUsage: "asc" };
+      } else if (req.query.sort === "SCORE") {
+        orderBy = { testCasesPassed: "desc" };
+      }
+    }
+
+    const [submissions, total] = await Promise.all([
+      prisma.submission.findMany({
+        where,
+        include: { problem: { select: { title: true, difficulty: true } } },
+        orderBy,
+        skip,
+        take: limit
+      }),
+      prisma.submission.count({ where })
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: submissions,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getSubmissionDetailHandler = async (req, res, next) => {
+  try {
+    const submission = await prisma.submission.findUnique({
+      where: { id: req.params.id },
+      include: { problem: { select: { title: true, difficulty: true, examples: true } } }
+    });
+
+    if (!submission) return res.status(404).json({ success: false, message: "Submission not found." });
+    if (submission.userId !== req.user.id && req.user.role !== "ADMIN") {
+      return res.status(403).json({ success: false, message: "Not authorized." });
+    }
+
+    return res.status(200).json({ success: true, data: submission });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const getSubmissionsStatisticsHandler = async (req, res, next) => {
+  try {
+    const where = { userId: req.user.id };
+
+    const total = await prisma.submission.count({ where });
+    const accepted = await prisma.submission.count({
+      where: { ...where, status: "ACCEPTED" }
+    });
+
+    const averageMetrics = await prisma.submission.aggregate({
+      where,
+      _avg: {
+        executionTime: true,
+        memoryUsage: true
+      }
+    });
+
+    // Unique solved problems
+    const solvedSubmissions = await prisma.submission.findMany({
+      where: { ...where, status: "ACCEPTED" },
+      select: { problemId: true }
+    });
+    const solvedCount = new Set(solvedSubmissions.map(s => s.problemId)).size;
+
+    const rate = total > 0 ? Math.round((accepted / total) * 100) : 0;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalSubmissions: total,
+        acceptedSubmissions: accepted,
+        acceptanceRate: rate,
+        averageRuntime: averageMetrics._avg.executionTime ? Math.round(averageMetrics._avg.executionTime * 1000) : 0,
+        averageMemory: averageMetrics._avg.memoryUsage ? Math.round(averageMetrics._avg.memoryUsage) : 0,
+        solvedProblemsCount: solvedCount
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   runCodeHandler,
   runCustomTestCaseHandler,
@@ -253,5 +372,8 @@ module.exports = {
   getEditorSettingsHandler,
   saveEditorSettingsHandler,
   getLanguagePreferenceHandler,
-  saveLanguagePreferenceHandler
+  saveLanguagePreferenceHandler,
+  getUserSubmissionsHandler,
+  getSubmissionDetailHandler,
+  getSubmissionsStatisticsHandler
 };

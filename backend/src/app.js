@@ -69,6 +69,7 @@ const notificationRoutes = require("./modules/notifications/notifications.routes
 const projectRoutes = require("./modules/projects/projects.routes");
 const recommendationRoutes = require("./modules/recommendations/recommendations.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
+const solutionRoutes = require("./modules/solutions/solutions.routes");
 
 const rateLimit = require("express-rate-limit");
 
@@ -279,6 +280,11 @@ app.use(
 app.use(
   "/api/admin",
   adminRoutes
+);
+
+app.use(
+  "/api/solutions",
+  solutionRoutes
 );
 
 // Fallback 404 JSON response handler (Sprint 5.2)

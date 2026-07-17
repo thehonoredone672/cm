@@ -18,6 +18,9 @@ import ProblemSolve from "./pages/Problems/ProblemSolve";
 import AdminProblems from "./pages/Problems/AdminProblems";
 import Ecosystem from "./pages/Ecosystem/Ecosystem";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
+import SubmissionHistory from "./pages/Submissions/SubmissionHistory";
+import AdminSolutions from "./pages/Solutions/AdminSolutions";
+import StudentSolutions from "./pages/Solutions/StudentSolutions";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -168,6 +171,39 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <ProblemSolve />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/submissions/history"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SubmissionHistory />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/problems/:problemId/solutions/admin"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AdminSolutions />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/problems/:problemId/solutions"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <StudentSolutions />
               </MainLayout>
             </ProtectedRoute>
           }

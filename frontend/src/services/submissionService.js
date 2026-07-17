@@ -80,3 +80,18 @@ export const saveLanguagePreference = async (language) => {
   const response = await api.post("/submissions/pref", { language });
   return response.data.data;
 };
+
+export const getUserSubmissions = async (params = {}) => {
+  const response = await api.get("/submissions", { params });
+  return response.data;
+};
+
+export const getSubmissionDetail = async (id) => {
+  const response = await api.get(`/submissions/${id}`);
+  return response.data.data;
+};
+
+export const getSubmissionsStatistics = async () => {
+  const response = await api.get("/submissions/stats");
+  return response.data.data;
+};

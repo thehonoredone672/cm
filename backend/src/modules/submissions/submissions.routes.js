@@ -11,7 +11,10 @@ const {
   getEditorSettingsHandler,
   saveEditorSettingsHandler,
   getLanguagePreferenceHandler,
-  saveLanguagePreferenceHandler
+  saveLanguagePreferenceHandler,
+  getUserSubmissionsHandler,
+  getSubmissionDetailHandler,
+  getSubmissionsStatisticsHandler
 } = require("./submissions.controller");
 
 const router = express.Router();
@@ -30,5 +33,9 @@ router.post("/settings", protect, saveEditorSettingsHandler);
 
 router.get("/pref", protect, getLanguagePreferenceHandler);
 router.post("/pref", protect, saveLanguagePreferenceHandler);
+
+router.get("/", protect, getUserSubmissionsHandler);
+router.get("/stats", protect, getSubmissionsStatisticsHandler);
+router.get("/:id", protect, getSubmissionDetailHandler);
 
 module.exports = router;
