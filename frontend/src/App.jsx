@@ -24,6 +24,7 @@ import StudentSolutions from "./pages/Solutions/StudentSolutions";
 import ContestList from "./pages/Contests/ContestList";
 import ContestDetails from "./pages/Contests/ContestDetails";
 import ContestDashboard from "./pages/Contests/ContestDashboard";
+import Leaderboard from "./pages/Leaderboard/Leaderboard";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -240,6 +241,17 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <ContestDashboard />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/leaderboard"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Leaderboard />
               </MainLayout>
             </ProtectedRoute>
           }
