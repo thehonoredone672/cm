@@ -100,20 +100,21 @@ model User {
   driveApplications  CandidateApplication[]
   certificates       Certificate[]
 
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  teamAnnouncements  TeamAnnouncement[]
-  teamTasks          TeamTask[]
-  teamFiles          TeamFile[]
-  teamActivities     TeamActivity[]
-  messageReactions   MessageReaction[]
-  problemBookmarks   ProblemBookmark[]
-  problemLikes       ProblemLike[]
-  problemDiscussions ProblemDiscussion[]
-  problemReports     ProblemReport[]
-  codeDrafts         CodeDraft[]
-  languagePreference LanguagePreference?
-  editorSettings     EditorSettings?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  teamAnnouncements    TeamAnnouncement[]
+  teamTasks            TeamTask[]
+  teamFiles            TeamFile[]
+  teamActivities       TeamActivity[]
+  messageReactions     MessageReaction[]
+  problemBookmarks     ProblemBookmark[]
+  problemLikes         ProblemLike[]
+  problemDiscussions   ProblemDiscussion[]
+  problemReports       ProblemReport[]
+  codeDrafts           CodeDraft[]
+  languagePreference   LanguagePreference?
+  editorSettings       EditorSettings?
+  contestRegistrations ContestRegistration[]
 }
 
 model Skill {
@@ -309,29 +310,30 @@ enum Difficulty {
 }
 
 model Problem {
-  id             String              @id @default(uuid())
-  title          String
-  description    String
-  category       String
-  difficulty     Difficulty          @default(EASY)
-  tags           String[]
-  companies      String[]
-  constraints    String?
-  status         String              @default("PUBLISHED") // DRAFT, PUBLISHED
-  visibility     String              @default("PUBLIC") // PUBLIC, PRIVATE
-  starterCode    Json // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
-  examples       Json // E.g. [{ input: "...", output: "...", explanation: "..." }]
-  testCases      TestCase[]
-  submissions    Submission[]
-  bookmarks      ProblemBookmark[]
-  likes          ProblemLike[]
-  discussions    ProblemDiscussion[]
-  editorial      ProblemEditorial?
-  reports        ProblemReport[]
-  solutions      Solution[]
-  dailyChallenge DailyChallenge?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  id              String              @id @default(uuid())
+  title           String
+  description     String
+  category        String
+  difficulty      Difficulty          @default(EASY)
+  tags            String[]
+  companies       String[]
+  constraints     String?
+  status          String              @default("PUBLISHED") // DRAFT, PUBLISHED
+  visibility      String              @default("PUBLIC") // PUBLIC, PRIVATE
+  starterCode     Json // E.g. { python: "...", javascript: "...", cpp: "...", java: "...", c: "..." }
+  examples        Json // E.g. [{ input: "...", output: "...", explanation: "..." }]
+  testCases       TestCase[]
+  submissions     Submission[]
+  bookmarks       ProblemBookmark[]
+  likes           ProblemLike[]
+  discussions     ProblemDiscussion[]
+  editorial       ProblemEditorial?
+  reports         ProblemReport[]
+  solutions       Solution[]
+  contestProblems ContestProblem[]
+  dailyChallenge  DailyChallenge?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 }
 
 model TestCase {
@@ -847,4 +849,51 @@ model SolutionComplexity {
   time     String
   space    String
   solution Solution?
+}
+
+model Contest {
+  id            String                @id @default(uuid())
+  title         String
+  description   String
+  startTime     DateTime
+  endTime       DateTime
+  type          String                @default("PUBLIC") // PRACTICE, PUBLIC, PRIVATE, COLLEGE, HACKATHON, RECRUITMENT
+  status        String                @default("UPCOMING") // UPCOMING, ACTIVE, COMPLETED
+  problems      ContestProblem[]
+  registrations ContestRegistration[]
+  announcements ContestAnnouncement[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+}
+
+model ContestProblem {
+  id        String  @id @default(uuid())
+  contestId String
+  contest   Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problemId String
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  points    Int     @default(100)
+  order     Int     @default(0)
+
+  @@unique([contestId, problemId])
+}
+
+model ContestRegistration {
+  id        String   @id @default(uuid())
+  contestId String
+  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([contestId, userId])
+}
+
+model ContestAnnouncement {
+  id        String   @id @default(uuid())
+  contestId String
+  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  createdAt DateTime @default(now())
 }

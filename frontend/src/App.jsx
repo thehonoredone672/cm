@@ -21,6 +21,9 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import SubmissionHistory from "./pages/Submissions/SubmissionHistory";
 import AdminSolutions from "./pages/Solutions/AdminSolutions";
 import StudentSolutions from "./pages/Solutions/StudentSolutions";
+import ContestList from "./pages/Contests/ContestList";
+import ContestDetails from "./pages/Contests/ContestDetails";
+import ContestDashboard from "./pages/Contests/ContestDashboard";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -204,6 +207,39 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <StudentSolutions />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/contests"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ContestList />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/contests/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ContestDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/contests/:id/dashboard"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ContestDashboard />
               </MainLayout>
             </ProtectedRoute>
           }
