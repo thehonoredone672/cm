@@ -74,6 +74,7 @@ const contestRoutes = require("./modules/contests/contests.routes");
 const leaderboardRoutes = require("./modules/leaderboard/leaderboard.routes");
 const searchRoutes = require("./modules/search/search.routes");
 const settingsRoutes = require("./modules/settings/settings.routes");
+const adminDashboardRoutes = require("./modules/admin-dashboard/admin-dashboard.routes");
 
 const rateLimit = require("express-rate-limit");
 
@@ -309,6 +310,11 @@ app.use(
 app.use(
   "/api/settings",
   settingsRoutes
+);
+
+app.use(
+  "/api/admin-dashboard",
+  adminDashboardRoutes
 );
 
 // Fallback 404 JSON response handler (Sprint 5.2)

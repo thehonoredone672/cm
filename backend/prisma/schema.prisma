@@ -124,6 +124,7 @@ model User {
   userPrivacy            UserPrivacy?
   activeSessions         ActiveSession[]
   loginHistories         LoginHistory[]
+  adminActivities        AdminActivity[]
 }
 
 model Skill {
@@ -985,5 +986,15 @@ model LoginHistory {
   ipAddress String?
   browser   String?
   os        String?
+  createdAt DateTime @default(now())
+}
+
+model AdminActivity {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  module    String
+  status    String
   createdAt DateTime @default(now())
 }
