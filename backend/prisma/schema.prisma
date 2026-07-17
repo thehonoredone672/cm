@@ -103,21 +103,27 @@ model User {
   driveApplications  CandidateApplication[]
   certificates       Certificate[]
 
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  teamAnnouncements    TeamAnnouncement[]
-  teamTasks            TeamTask[]
-  teamFiles            TeamFile[]
-  teamActivities       TeamActivity[]
-  messageReactions     MessageReaction[]
-  problemBookmarks     ProblemBookmark[]
-  problemLikes         ProblemLike[]
-  problemDiscussions   ProblemDiscussion[]
-  problemReports       ProblemReport[]
-  codeDrafts           CodeDraft[]
-  languagePreference   LanguagePreference?
-  editorSettings       EditorSettings?
-  contestRegistrations ContestRegistration[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  teamAnnouncements      TeamAnnouncement[]
+  teamTasks              TeamTask[]
+  teamFiles              TeamFile[]
+  teamActivities         TeamActivity[]
+  messageReactions       MessageReaction[]
+  problemBookmarks       ProblemBookmark[]
+  problemLikes           ProblemLike[]
+  problemDiscussions     ProblemDiscussion[]
+  problemReports         ProblemReport[]
+  codeDrafts             CodeDraft[]
+  languagePreference     LanguagePreference?
+  editorSettings         EditorSettings?
+  contestRegistrations   ContestRegistration[]
+  notificationPreference NotificationPreference?
+  searchHistories        SearchHistory[]
+  userPreferences        UserPreferences?
+  userPrivacy            UserPrivacy?
+  activeSessions         ActiveSession[]
+  loginHistories         LoginHistory[]
 }
 
 model Skill {
@@ -898,5 +904,86 @@ model ContestAnnouncement {
   contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
   title     String
   content   String
+  createdAt DateTime @default(now())
+}
+
+model NotificationPreference {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat          Boolean  @default(true)
+  teams         Boolean  @default(true)
+  contests      Boolean  @default(true)
+  problems      Boolean  @default(true)
+  leaderboard   Boolean  @default(true)
+  announcements Boolean  @default(true)
+  marketing     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SearchHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  query     String
+  createdAt DateTime @default(now())
+}
+
+model SearchAnalytics {
+  id        String   @id @default(uuid())
+  query     String   @unique
+  count     Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
+
+model UserPreferences {
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme             String  @default("dark")
+  accentColor       String  @default("blue")
+  fontSize          Int     @default(14)
+  editorLanguage    String  @default("javascript")
+  editorTheme       String  @default("vs-dark")
+  editorFontSize    Int     @default(14)
+  editorTabSize     Int     @default(4)
+  editorWordWrap    Boolean @default(true)
+  editorAutoSave    Boolean @default(true)
+  editorLineNumbers Boolean @default(true)
+  editorMinimap     Boolean @default(false)
+}
+
+model UserPrivacy {
+  id             String  @id @default(uuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publicProfile  Boolean @default(true)
+  showEmail      Boolean @default(true)
+  showCollege    Boolean @default(true)
+  showGithub     Boolean @default(true)
+  showStatistics Boolean @default(true)
+  showProjects   Boolean @default(true)
+  showTeams      Boolean @default(true)
+}
+
+model ActiveSession {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  ipAddress  String?
+  browser    String?
+  os         String?
+  lastActive DateTime @default(now())
+}
+
+model LoginHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  browser   String?
+  os        String?
   createdAt DateTime @default(now())
 }

@@ -4,6 +4,10 @@ const {
   getNotificationsHandler,
   markAllReadHandler,
   markReadHandler,
+  deleteNotificationHandler,
+  deleteAllNotificationsHandler,
+  getNotificationPreferencesHandler,
+  updateNotificationPreferencesHandler
 } = require("./notifications.controller");
 
 const router = express.Router();
@@ -11,5 +15,11 @@ const router = express.Router();
 router.get("/", protect, getNotificationsHandler);
 router.patch("/read", protect, markAllReadHandler);
 router.patch("/:id/read", protect, markReadHandler);
+
+router.delete("/", protect, deleteAllNotificationsHandler);
+router.delete("/:id", protect, deleteNotificationHandler);
+
+router.get("/preferences", protect, getNotificationPreferencesHandler);
+router.put("/preferences", protect, updateNotificationPreferencesHandler);
 
 module.exports = router;

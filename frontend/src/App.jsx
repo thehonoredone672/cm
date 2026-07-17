@@ -25,6 +25,9 @@ import ContestList from "./pages/Contests/ContestList";
 import ContestDetails from "./pages/Contests/ContestDetails";
 import ContestDashboard from "./pages/Contests/ContestDashboard";
 import Leaderboard from "./pages/Leaderboard/Leaderboard";
+import NotificationCenter from "./pages/Notifications/NotificationCenter";
+import GlobalSearch from "./pages/Search/GlobalSearch";
+import Settings from "./pages/Settings/Settings";
 
 import MainLayout from "./layouts/MainLayout";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -252,6 +255,39 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <Leaderboard />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <NotificationCenter />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <GlobalSearch />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Settings />
               </MainLayout>
             </ProtectedRoute>
           }
