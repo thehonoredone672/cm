@@ -50,3 +50,33 @@ export const getLatestSubmissions = async () => {
     throw Object.assign(err, { displayMessage: msg });
   }
 };
+
+export const getCodeDraft = async (problemId, language) => {
+  const response = await api.get("/submissions/draft", { params: { problemId, language } });
+  return response.data.data;
+};
+
+export const saveCodeDraft = async (problemId, language, code) => {
+  const response = await api.post("/submissions/draft", { problemId, language, code });
+  return response.data.data;
+};
+
+export const getEditorSettings = async () => {
+  const response = await api.get("/submissions/settings");
+  return response.data.data;
+};
+
+export const saveEditorSettings = async (data) => {
+  const response = await api.post("/submissions/settings", data);
+  return response.data.data;
+};
+
+export const getLanguagePreference = async () => {
+  const response = await api.get("/submissions/pref");
+  return response.data.data;
+};
+
+export const saveLanguagePreference = async (language) => {
+  const response = await api.post("/submissions/pref", { language });
+  return response.data.data;
+};

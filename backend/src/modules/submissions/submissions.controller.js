@@ -134,11 +134,124 @@ const getLatestSubmissionsHandler = async (req, res, next) => {
   }
 };
 
+// ─── Draft handlers ─────────────────────────────────────────────────────────────
+
+const getCodeDraftHandler = async (req, res, next) => {
+  try {
+    const { problemId, language } = req.query;
+    if (!problemId || !language) {
+      return res.status(400).json({ success: false, message: "problemId and language are required." });
+    }
+    const draft = await prisma.codeDraft.findUnique({
+      where: {
+        problemId_userId_language: {
+          problemId,
+          userId: req.user.id,
+          language
+        }
+      }
+    });
+    return res.status(200).json({ success: true, data: draft });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const saveCodeDraftHandler = async (req, res, next) => {
+  try {
+    const { problemId, language, code } = req.body;
+    if (!problemId || !language || code === undefined) {
+      return res.status(400).json({ success: false, message: "problemId, language and code are required." });
+    }
+    const draft = await prisma.codeDraft.upsert({
+      where: {
+        problemId_userId_language: {
+          problemId,
+          userId: req.user.id,
+          language
+        }
+      },
+      update: { code },
+      create: { problemId, userId: req.user.id, language, code }
+    });
+    return res.status(200).json({ success: true, data: draft });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Settings handlers ──────────────────────────────────────────────────────────
+
+const getEditorSettingsHandler = async (req, res, next) => {
+  try {
+    let settings = await prisma.editorSettings.findUnique({
+      where: { userId: req.user.id }
+    });
+    if (!settings) {
+      settings = await prisma.editorSettings.create({
+        data: { userId: req.user.id }
+      });
+    }
+    return res.status(200).json({ success: true, data: settings });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const saveEditorSettingsHandler = async (req, res, next) => {
+  try {
+    const { theme, fontSize, wordWrap, minimap, autoSave } = req.body;
+    const settings = await prisma.editorSettings.upsert({
+      where: { userId: req.user.id },
+      update: { theme, fontSize, wordWrap, minimap, autoSave },
+      create: { userId: req.user.id, theme, fontSize, wordWrap, minimap, autoSave }
+    });
+    return res.status(200).json({ success: true, data: settings });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── Language Preference handlers ──────────────────────────────────────────────
+
+const getLanguagePreferenceHandler = async (req, res, next) => {
+  try {
+    const pref = await prisma.languagePreference.findUnique({
+      where: { userId: req.user.id }
+    });
+    return res.status(200).json({ success: true, data: pref });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const saveLanguagePreferenceHandler = async (req, res, next) => {
+  try {
+    const { language } = req.body;
+    if (!language) {
+      return res.status(400).json({ success: false, message: "language is required." });
+    }
+    const pref = await prisma.languagePreference.upsert({
+      where: { userId: req.user.id },
+      update: { language },
+      create: { userId: req.user.id, language }
+    });
+    return res.status(200).json({ success: true, data: pref });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   runCodeHandler,
   runCustomTestCaseHandler,
   submitCodeHandler,
   getProblemSubmissionsHandler,
-  getLatestSubmissionsHandler
+  getLatestSubmissionsHandler,
+  getCodeDraftHandler,
+  saveCodeDraftHandler,
+  getEditorSettingsHandler,
+  saveEditorSettingsHandler,
+  getLanguagePreferenceHandler,
+  saveLanguagePreferenceHandler
 };
-

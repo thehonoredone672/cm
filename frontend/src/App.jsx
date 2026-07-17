@@ -14,6 +14,7 @@ import TeamsList from "./pages/Teams/TeamsList";
 import TeamDetails from "./pages/Teams/TeamDetails";
 import ProblemList from "./pages/Problems/ProblemList";
 import ProblemDetails from "./pages/Problems/ProblemDetails";
+import ProblemSolve from "./pages/Problems/ProblemSolve";
 import AdminProblems from "./pages/Problems/AdminProblems";
 import Ecosystem from "./pages/Ecosystem/Ecosystem";
 import AdminDashboard from "./pages/Admin/AdminDashboard";
@@ -156,6 +157,17 @@ function App() {
             <ProtectedRoute>
               <MainLayout>
                 <ProblemDetails />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/problems/:id/solve"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ProblemSolve />
               </MainLayout>
             </ProtectedRoute>
           }
