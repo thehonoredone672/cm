@@ -2,17 +2,17 @@ import api from "../api/axios";
 
 export const getNotifications = async (params = {}) => {
   const response = await api.get("/notifications", { params });
-  return response.data;
-};
-
-export const markAllNotificationsRead = async () => {
-  const response = await api.patch("/notifications/read");
-  return response.data;
+  return Array.isArray(response.data.data) ? response.data.data : [];
 };
 
 export const markNotificationRead = async (id) => {
   const response = await api.patch(`/notifications/${id}/read`);
   return response.data.data;
+};
+
+export const markAllNotificationsRead = async () => {
+  const response = await api.patch("/notifications/read");
+  return response.data;
 };
 
 export const deleteNotification = async (id) => {

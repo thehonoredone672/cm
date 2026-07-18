@@ -71,13 +71,8 @@ export default function SubmissionHistory() {
     fetchSubmissionsAndStats();
   };
 
-  const handleOpenDetail = async (id) => {
-    try {
-      const detail = await getSubmissionDetail(id);
-      setSelectedDetail(detail);
-    } catch (e) {
-      console.error(e);
-    }
+  const handleOpenDetail = (id) => {
+    navigate(`/submissions/${id}`);
   };
 
   // Compare mode selections
@@ -279,43 +274,7 @@ export default function SubmissionHistory() {
 
       </div>
 
-      {/* DETAIL WORKSPACE VIEW MODAL */}
-      <AnimatePresence>
-        {selectedDetail && (
-          <div className="create-modal-overlay" style={{ zIndex: 1100 }}>
-            <motion.div className="create-modal-content" style={{ maxWidth: "800px" }} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginBottom: "16px" }}>
-                <h3>Submission Logs: {selectedDetail.problem?.title}</h3>
-                <span className={`status-tag status-tag--${VERDICT_CLASS[selectedDetail.status]}`}>{selectedDetail.status}</span>
-              </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", marginBottom: "16px", fontSize: "12px" }}>
-                <div><strong>Language:</strong> <span style={{ textTransform: "capitalize" }}>{selectedDetail.language}</span></div>
-                <div><strong>Time:</strong> {selectedDetail.executionTime ? `${Math.round(selectedDetail.executionTime * 1000)} ms` : "—"}</div>
-                <div><strong>Memory:</strong> {selectedDetail.memoryUsage ? `${selectedDetail.memoryUsage} MB` : "—"}</div>
-              </div>
-
-              {selectedDetail.errorMessage && (
-                <div style={{ marginBottom: "16px" }}>
-                  <strong style={{ fontSize: "12px", color: "#ef4444" }}>Errors log:</strong>
-                  <div className="lc-console-error" style={{ marginTop: "4px" }}>{selectedDetail.errorMessage}</div>
-                </div>
-              )}
-
-              <div>
-                <strong style={{ fontSize: "12px" }}>Source Code:</strong>
-                <pre style={{ background: "var(--background)", border: "1px solid var(--border)", borderRadius: "6px", padding: "12px", overflowX: "auto", fontFamily: "monospace", fontSize: "12px", color: "var(--text-primary)", maxHeight: "250px", marginTop: "4px" }}>
-                  <code>{selectedDetail.code}</code>
-                </pre>
-              </div>
-
-              <div className="modal-actions" style={{ marginTop: "20px" }}>
-                <button type="button" className="btn-secondary" onClick={() => setSelectedDetail(null)}>Close</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* COMPARE MODE SIDE-BY-SIDE MODAL */}
       <AnimatePresence>

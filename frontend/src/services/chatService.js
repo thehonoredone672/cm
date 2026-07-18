@@ -63,11 +63,6 @@ export const sendMessage = async (conversationId, text, fileUrl = null, fileType
   return response.data.data;
 };
 
-export const pinConversation = async (conversationId, isPinned) => {
-  const response = await api.patch(`/chat/conversation/${conversationId}/pin`, { isPinned });
-  return response.data.data;
-};
-
 export const editMessage = async (conversationId, messageId, text) => {
   const response = await api.put(`/chat/message/${conversationId}/${messageId}`, { text });
   return response.data.data;
@@ -75,11 +70,6 @@ export const editMessage = async (conversationId, messageId, text) => {
 
 export const deleteMessage = async (conversationId, messageId) => {
   const response = await api.delete(`/chat/message/${conversationId}/${messageId}`);
-  return response.data;
-};
-
-export const pinMessage = async (conversationId, messageId, isPinned) => {
-  const response = await api.patch(`/chat/message/${conversationId}/${messageId}/pin`, { isPinned });
   return response.data.data;
 };
 
@@ -90,5 +80,5 @@ export const addReaction = async (conversationId, messageId, emoji) => {
 
 export const removeReaction = async (conversationId, messageId, emoji) => {
   const response = await api.delete(`/chat/message/${conversationId}/${messageId}/reactions`, { data: { emoji } });
-  return response.data;
+  return response.data.data;
 };

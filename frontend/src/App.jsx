@@ -19,13 +19,14 @@ import AdminProblems from "./pages/Problems/AdminProblems";
 import Ecosystem from "./pages/Ecosystem/Ecosystem";
 import AdminDashboardPortal from "./pages/Admin/AdminDashboardPortal";
 import SubmissionHistory from "./pages/Submissions/SubmissionHistory";
+import SubmissionDetail from "./pages/Submissions/SubmissionDetail";
 import AdminSolutions from "./pages/Solutions/AdminSolutions";
 import StudentSolutions from "./pages/Solutions/StudentSolutions";
 import ContestList from "./pages/Contests/ContestList";
 import ContestDetails from "./pages/Contests/ContestDetails";
 import ContestDashboard from "./pages/Contests/ContestDashboard";
 import Leaderboard from "./pages/Leaderboard/Leaderboard";
-import NotificationCenter from "./pages/Notifications/NotificationCenter";
+
 import GlobalSearch from "./pages/Search/GlobalSearch";
 import Settings from "./pages/Settings/Settings";
 
@@ -195,6 +196,17 @@ function App() {
         />
 
         <Route
+          path="/submissions/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <SubmissionDetail />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/problems/:problemId/solutions/admin"
           element={
             <ProtectedRoute>
@@ -260,16 +272,6 @@ function App() {
           }
         />
 
-        <Route
-          path="/notifications"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <NotificationCenter />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
 
         <Route
           path="/search"

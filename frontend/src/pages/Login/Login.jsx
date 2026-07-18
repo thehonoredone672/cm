@@ -32,13 +32,9 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    setLoading(true);
-
     try {
+      setLoading(true);
       const response = await loginUser(form);
-
-      console.log("Login Response:", response);
-
       if (!response.success) {
         alert("Login Failed");
         return;

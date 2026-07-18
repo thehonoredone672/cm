@@ -14,7 +14,8 @@ import {
   getEditorSettings,
   saveEditorSettings,
   getLanguagePreference,
-  saveLanguagePreference
+  saveLanguagePreference,
+  getSubmissions
 } from "../../services/submissionService";
 import { motion, AnimatePresence } from "framer-motion";
 import "./Problems.css";
@@ -35,13 +36,16 @@ const STARTER = {
   java: `public class Solution {\n    public static String solve(String input) {\n        // Write your solution here\n        return input;\n    }\n}`,
 };
 
+const DIFF_LABEL = { EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" };
+const DIFF_CLASS = { EASY: "easy", MEDIUM: "medium", HARD: "hard" };
+
 const STATUS_META = {
   ACCEPTED:             { label: "Accepted",              icon: "✓", cls: "accepted"             },
   WRONG_ANSWER:         { label: "Wrong Answer",          icon: "✗", cls: "wrong_answer"         },
   RUNTIME_ERROR:        { label: "Runtime Error",         icon: "⚠", cls: "runtime_error"        },
   TIME_LIMIT_EXCEEDED:  { label: "Time Limit Exceeded",   icon: "⌛", cls: "time_limit_exceeded"  },
   COMPILATION_ERROR:    { label: "Compilation Error",     icon: "⊘", cls: "compilation_error"    },
-  MEMORY_LIMIT_EXCEEDED: { label: "Memory Limit Exceeded", icon: "🔴", cls: "runtime_error"      },
+  MEMORY_LIMIT_EXCEEDED: { label: "Memory Limit Exceeded", icon: "🔴", cls: "memory_limit_exceeded" },
 };
 
 export default function ProblemSolve() {
@@ -66,16 +70,54 @@ export default function ProblemSolve() {
   // Execution console states
   const [executing, setExecuting] = useState(false);
   const [execResult, setExecResult] = useState(null);
-  const [consoleTab, setConsoleTab] = useState("results"); // "custom-input" or "results"
+  const [consoleTab, setConsoleTab] = useState("results"); // "custom-input", "results" or "history"
   const [customInput, setCustomInput] = useState("");
   const [selectedCase, setSelectedCase] = useState(0);
+
+  // Submission History States
+  const [submissionsList, setSubmissionsList] = useState([]);
+  const [submissionsPagination, setSubmissionsPagination] = useState({ total: 0, pages: 1 });
+  const [subPage, setSubPage] = useState(1);
+  const [subLang, setSubLang] = useState("");
+  const [subVerdict, setSubVerdict] = useState("");
+  const [subSearch, setSubSearch] = useState("");
+  const [subSort, setSubSort] = useState("NEWEST");
+  const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
   // Auto-save timer reference
   const autoSaveTimerRef = useRef(null);
 
+  const fetchProblemSubmissions = useCallback(async () => {
+    try {
+      setLoadingSubmissions(true);
+      const res = await getSubmissions(id, {
+        page: subPage,
+        limit: 10,
+        language: subLang || undefined,
+        verdict: subVerdict || undefined,
+        search: subSearch || undefined,
+        sort: subSort
+      });
+      if (res && res.success) {
+        setSubmissionsList(Array.isArray(res.data) ? res.data : []);
+        setSubmissionsPagination(res.pagination || { total: 0, pages: 1 });
+      }
+    } catch (e) {
+      console.error("Failed to load problem submissions", e);
+    } finally {
+      setLoadingSubmissions(false);
+    }
+  }, [id, subPage, subLang, subVerdict, subSearch, subSort]);
+
   useEffect(() => {
     fetchProblemDetailsAndPreferences();
   }, [id]);
+
+  useEffect(() => {
+    if (consoleTab === "history") {
+      fetchProblemSubmissions();
+    }
+  }, [consoleTab, fetchProblemSubmissions]);
 
   const fetchProblemDetailsAndPreferences = async () => {
     try {
@@ -125,7 +167,6 @@ export default function ProblemSolve() {
     autoSaveTimerRef.current = setTimeout(async () => {
       try {
         await saveCodeDraft(id, currentLang, updatedCode);
-        console.log("Draft code autosaved.");
       } catch (e) {
         console.error("Draft autosave failed", e);
       }
@@ -235,6 +276,7 @@ export default function ProblemSolve() {
       const data = await submitCode(id, code, language);
       setExecResult(data.executionResult ?? data);
       triggerToast(data.executionResult?.status === "ACCEPTED" ? "Success: Problem Solved! 🎉" : "Incorrect solution.");
+      fetchProblemSubmissions();
     } catch (err) {
       setExecResult({
         success: false,
@@ -304,8 +346,8 @@ export default function ProblemSolve() {
 
         <div>
           <h2 style={{ fontSize: "16px", fontWeight: "700", margin: "0 0 6px 0", color: "var(--text-primary)" }}>{problem.title}</h2>
-          <span className={`lc-diff-badge lc-diff-badge--${DIFF_CLASS[problem.difficulty]}`} style={{ fontSize: "11px" }}>
-            {DIFF_LABEL[problem.difficulty]}
+          <span className={`lc-diff-badge lc-diff-badge--${DIFF_CLASS[problem.difficulty?.toUpperCase()] || "easy"}`} style={{ fontSize: "11px" }}>
+            {DIFF_LABEL[problem.difficulty?.toUpperCase()] || problem.difficulty || "Easy"}
           </span>
         </div>
 
@@ -452,21 +494,166 @@ export default function ProblemSolve() {
             onClick={() => setConsoleTab("results")}
             style={{ flex: 1, padding: "12px" }}
           >
-            Execution Results
+            Results
           </button>
           <button 
             className={`lc-panel-tab ${consoleTab === "custom-input" ? "lc-panel-tab--active" : ""}`}
             onClick={() => setConsoleTab("custom-input")}
             style={{ flex: 1, padding: "12px" }}
           >
-            Custom Input
+            Custom Stdin
+          </button>
+          <button 
+            className={`lc-panel-tab ${consoleTab === "history" ? "lc-panel-tab--active" : ""}`}
+            onClick={() => setConsoleTab("history")}
+            style={{ flex: 1, padding: "12px" }}
+          >
+            Submissions
           </button>
         </div>
 
         {/* Content area */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px" }}>
           
-          {consoleTab === "custom-input" ? (
+          {consoleTab === "history" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", height: "100%" }}>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "8px" }}>
+                <input 
+                  type="text" 
+                  value={subSearch} 
+                  onChange={(e) => {
+                    setSubSearch(e.target.value);
+                    setSubPage(1);
+                  }}
+                  placeholder="Search ID, language..."
+                  style={{ flex: 1, minWidth: "100px", padding: "4px 8px", fontSize: "11px", background: "var(--background)", color: "var(--text-primary)", border: "1.5px solid var(--border)", borderRadius: "4px" }}
+                />
+
+                <select 
+                  value={subLang} 
+                  onChange={(e) => {
+                    setSubLang(e.target.value);
+                    setSubPage(1);
+                  }}
+                  style={{ padding: "4px", fontSize: "11px", background: "var(--background)", color: "var(--text-primary)", border: "1.5px solid var(--border)", borderRadius: "4px" }}
+                >
+                  <option value="">All Langs</option>
+                  <option value="javascript">JavaScript</option>
+                  <option value="python">Python</option>
+                  <option value="cpp">C++</option>
+                  <option value="c">C</option>
+                  <option value="java">Java</option>
+                </select>
+
+                <select 
+                  value={subVerdict} 
+                  onChange={(e) => {
+                    setSubVerdict(e.target.value);
+                    setSubPage(1);
+                  }}
+                  style={{ padding: "4px", fontSize: "11px", background: "var(--background)", color: "var(--text-primary)", border: "1.5px solid var(--border)", borderRadius: "4px" }}
+                >
+                  <option value="">All Status</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="WRONG_ANSWER">WA</option>
+                  <option value="TIME_LIMIT_EXCEEDED">TLE</option>
+                  <option value="RUNTIME_ERROR">RE</option>
+                  <option value="COMPILATION_ERROR">CE</option>
+                </select>
+
+                <select 
+                  value={subSort} 
+                  onChange={(e) => {
+                    setSubSort(e.target.value);
+                    setSubPage(1);
+                  }}
+                  style={{ padding: "4px", fontSize: "11px", background: "var(--background)", color: "var(--text-primary)", border: "1.5px solid var(--border)", borderRadius: "4px" }}
+                >
+                  <option value="NEWEST">Newest</option>
+                  <option value="OLDEST">Oldest</option>
+                  <option value="RUNTIME">Runtime</option>
+                  <option value="MEMORY">Memory</option>
+                </select>
+              </div>
+
+              {loadingSubmissions ? (
+                <div className="lc-spinner" style={{ height: "150px" }}>
+                  <div className="lc-spin" />
+                  <span>Loading submissions...</span>
+                </div>
+              ) : (submissionsList || []).length === 0 ? (
+                <div className="lc-console__hint" style={{ padding: "30px 0" }}>
+                  <span>No submissions found for this query.</span>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px", overflowY: "auto", flex: 1 }}>
+                  {(submissionsList || []).map((sub) => {
+                    const statusMetaVal = STATUS_META[sub.status] || { label: sub.status, icon: "?", cls: "runtime_error" };
+                    return (
+                      <div 
+                        key={sub.id} 
+                        onClick={() => navigate(`/submissions/${sub.id}`)}
+                        style={{ 
+                          background: "var(--background)", 
+                          border: "1.5px solid var(--border)", 
+                          padding: "10px 12px", 
+                          borderRadius: "6px", 
+                          cursor: "pointer", 
+                          display: "flex", 
+                          justifyContent: "space-between", 
+                          alignItems: "center", 
+                          fontSize: "12px", 
+                          transition: "border-color 0.2s" 
+                        }}
+                        className="sub-history-row-item"
+                      >
+                        <div>
+                          <span className={`status-badge ${statusMetaVal.cls}`} style={{ marginRight: "8px" }}>
+                            {statusMetaVal.icon} {statusMetaVal.label}
+                          </span>
+                          <span style={{ color: "var(--text-secondary)", fontSize: "11px" }}>
+                            {sub.language}
+                          </span>
+                          <div style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "4px" }}>
+                            ID: {sub.id.substring(0, 8)}... • {new Date(sub.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", fontSize: "11px" }}>
+                          <div>{sub.executionTime ? `${Math.round(sub.executionTime * 1000)} ms` : "—"}</div>
+                          <div style={{ color: "var(--text-muted)", fontSize: "10px", marginTop: "2px" }}>
+                            {sub.memoryUsage ? `${sub.memoryUsage} MB` : "—"}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Pagination inside Console History tab */}
+                  {submissionsPagination.pages > 1 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px", borderTop: "1.5px solid var(--border)", paddingTop: "8px" }}>
+                      <button 
+                        className="btn-table-action" 
+                        disabled={subPage === 1} 
+                        onClick={() => setSubPage(prev => Math.max(prev - 1, 1))}
+                        style={{ padding: "2px 8px", fontSize: "10px" }}
+                      >
+                        Prev
+                      </button>
+                      <span style={{ fontSize: "10px" }}>Page {subPage} of {submissionsPagination.pages}</span>
+                      <button 
+                        className="btn-table-action" 
+                        disabled={subPage === submissionsPagination.pages} 
+                        onClick={() => setSubPage(prev => Math.min(prev + 1, submissionsPagination.pages))}
+                        style={{ padding: "2px 8px", fontSize: "10px" }}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : consoleTab === "custom-input" ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", height: "100%" }}>
               <span className="lc-tag-label" style={{ fontSize: "11px" }}>Standard Input (Stdin)</span>
               <textarea 

@@ -1444,7 +1444,7 @@ export default function Ecosystem() {
               <h3 style={{ margin: 0, fontSize: "16px" }}>AI Agent Configuration</h3>
               <p style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.4 }}>Uses skill similarity vectors from database user interest indices to calculate teammates compatibility recommendations.</p>
               <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px", marginTop: "10px" }}>
-                <input type="checkbox" defaultChecked /> Enable AI onboarding notifications
+                <input type="checkbox" defaultChecked /> Enable AI onboarding 
               </label>
               <label style={{ fontSize: "12px", display: "flex", alignItems: "center", gap: "8px" }}>
                 <input type="checkbox" defaultChecked /> Sync solvers statistics with AI models

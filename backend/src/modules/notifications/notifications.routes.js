@@ -1,5 +1,7 @@
 const express = require("express");
 const { protect } = require("../../middleware/authMiddleware");
+const validate = require("../../middleware/validate");
+const { updatePreferencesSchema } = require("./notifications.validation");
 const {
   getNotificationsHandler,
   markAllReadHandler,
@@ -7,7 +9,7 @@ const {
   deleteNotificationHandler,
   deleteAllNotificationsHandler,
   getNotificationPreferencesHandler,
-  updateNotificationPreferencesHandler
+  updateNotificationPreferencesHandler,
 } = require("./notifications.controller");
 
 const router = express.Router();
@@ -20,6 +22,6 @@ router.delete("/", protect, deleteAllNotificationsHandler);
 router.delete("/:id", protect, deleteNotificationHandler);
 
 router.get("/preferences", protect, getNotificationPreferencesHandler);
-router.put("/preferences", protect, updateNotificationPreferencesHandler);
+router.put("/preferences", protect, validate(updatePreferencesSchema), updateNotificationPreferencesHandler);
 
 module.exports = router;

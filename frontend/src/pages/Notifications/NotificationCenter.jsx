@@ -10,7 +10,7 @@ import {
   getNotificationPreferences, 
   updateNotificationPreferences 
 } from "../../services/notificationService";
-import "../Problems/Problems.css";
+import "./NotificationCenter.css";
 
 const TYPE_EMOJI = {
   CHAT: "💬",
@@ -50,31 +50,36 @@ export default function NotificationCenter() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("notification:new", (newNotif) => {
-      setNotifications(prev => [newNotif, ...prev]);
-    });
+    const handleNewNotification = (newNotif) => {
+      setNotifications((prev) => [newNotif, ...prev]);
+    };
 
-    socket.on("notification:read", (updatedNotif) => {
-      setNotifications(prev => prev.map(n => n.id === updatedNotif.id ? updatedNotif : n));
-    });
+    const handleNotificationRead = (updatedNotif) => {
+      setNotifications((prev) => prev.map((n) => (n.id === updatedNotif.id ? updatedNotif : n)));
+    };
 
-    socket.on("notification:delete", (payload) => {
-      setNotifications(prev => prev.filter(n => n.id !== payload.id));
-    });
+    const handleNotificationDelete = (payload) => {
+      setNotifications((prev) => prev.filter((n) => n.id !== payload.id));
+    };
 
-    socket.on("notification:update", (payload) => {
+    const handleNotificationUpdate = (payload) => {
       if (payload.isAllRead) {
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       } else if (payload.isAllDeleted) {
         setNotifications([]);
       }
-    });
+    };
+
+    socket.on("notification:new", handleNewNotification);
+    socket.on("notification:read", handleNotificationRead);
+    socket.on("notification:delete", handleNotificationDelete);
+    socket.on("notification:update", handleNotificationUpdate);
 
     return () => {
-      socket.off("notification:new");
-      socket.off("notification:read");
-      socket.off("notification:delete");
-      socket.off("notification:update");
+      socket.off("notification:new", handleNewNotification);
+      socket.off("notification:read", handleNotificationRead);
+      socket.off("notification:delete", handleNotificationDelete);
+      socket.off("notification:update", handleNotificationUpdate);
     };
   }, [socket]);
 
@@ -92,9 +97,10 @@ export default function NotificationCenter() {
         isRead: filterRead || undefined,
         search: search || undefined
       };
-      const res = await getNotifications(params);
-      setNotifications(res.data || []);
-      setTotalPages(res.pagination?.pages || 1);
+      const data = await getNotifications(params);
+      const safeData = Array.isArray(data) ? data : [];
+      setNotifications(safeData);
+      setTotalPages(1); // Assume single page or compute based on standard response
     } catch (e) {
       console.error(e);
     } finally {
@@ -134,6 +140,7 @@ export default function NotificationCenter() {
   const handleMarkAllRead = async () => {
     try {
       await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (e) {
       console.error(e);
     }
@@ -173,7 +180,6 @@ export default function NotificationCenter() {
     }
   };
 
-  // Group notifications dynamically: Today, Yesterday, This Week, Earlier
   const groupedNotifications = useMemo(() => {
     const groups = {
       Today: [],
@@ -190,9 +196,11 @@ export default function NotificationCenter() {
     const yesterdayStr = yesterday.toDateString();
 
     const startOfWeek = new Date();
-    startOfWeek.setDate(now.getDate() - now.getDay()); // start of week Sunday
+    startOfWeek.setDate(now.getDate() - now.getDay());
 
-    notifications.forEach(n => {
+    const safeNotifications = Array.isArray(notifications) ? notifications : [];
+
+    safeNotifications.forEach(n => {
       const notifDate = new Date(n.createdAt);
       const notifDateStr = notifDate.toDateString();
 
@@ -210,38 +218,39 @@ export default function NotificationCenter() {
     return groups;
   }, [notifications]);
 
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+
   return (
-    <motion.div className="lc-problems" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-        <h1>Inbox Notifications</h1>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button className="btn-table-action" onClick={() => setShowSettings(true)}>⚙️ Settings</button>
-          {notifications.length > 0 && (
+    <motion.div className="notification-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="notification-center__header">
+        <h1>Notifications Center</h1>
+        <div className="notification-center__actions">
+          <button className="btn-secondary" onClick={() => setShowSettings(true)}>⚙️ Settings</button>
+          {safeNotifications.length > 0 && (
             <>
-              <button className="btn-table-action" onClick={handleMarkAllRead}>✓ Mark All Read</button>
-              <button className="btn-table-action" style={{ borderColor: "#ef4444", color: "#ef4444" }} onClick={handleDeleteAll}>🗑️ Clear All</button>
+              <button className="btn-primary" onClick={handleMarkAllRead}>✓ Mark All Read</button>
+              <button className="btn-danger" onClick={handleDeleteAll}>🗑️ Clear All</button>
             </>
           )}
         </div>
       </div>
 
-      {/* FILTER OPTIONS */}
-      <div className="problems-filters-row" style={{ marginBottom: "20px", display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
-        <form onSubmit={handleSearchSubmit} style={{ display: "flex", gap: "8px", flex: 1, minWidth: "240px" }}>
+      <div className="notification-center__filters">
+        <form onSubmit={handleSearchSubmit} className="search-form">
           <input 
             type="text" 
             placeholder="Search keywords..." 
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: 1, padding: "8px 12px", borderRadius: "6px", background: "var(--surface)", color: "var(--text-primary)", border: "1.5px solid var(--border)" }}
+            className="search-input"
           />
-          <button type="submit" className="lc-run-btn" style={{ padding: "8px 14px" }}>Search</button>
+          <button type="submit" className="btn-search">Search</button>
         </form>
 
         <select 
           value={filterType} 
           onChange={(e) => { setFilterType(e.target.value); setPage(1); }}
-          style={{ padding: "8px", background: "var(--surface)", color: "var(--text-primary)", border: "1.5px solid var(--border)", borderRadius: "6px" }}
+          className="filter-select"
         >
           <option value="">All Types</option>
           <option value="CHAT">Chat messages</option>
@@ -254,7 +263,7 @@ export default function NotificationCenter() {
         <select 
           value={filterRead} 
           onChange={(e) => { setFilterRead(e.target.value); setPage(1); }}
-          style={{ padding: "8px", background: "var(--surface)", color: "var(--text-primary)", border: "1.5px solid var(--border)", borderRadius: "6px" }}
+          className="filter-select"
         >
           <option value="">All Read/Unread</option>
           <option value="false">Unread Only</option>
@@ -262,48 +271,45 @@ export default function NotificationCenter() {
         </select>
       </div>
 
-      {/* GROUPED LISTS */}
       {loading ? (
-        <div className="lc-spinner" style={{ padding: "40px" }}>
-          <div className="lc-spin" />
+        <div className="loading-spinner">
+          <div className="spinner" />
         </div>
-      ) : notifications.length === 0 ? (
-        <div className="stats-card" style={{ padding: "40px", textAlign: "center" }}>
-          <span className="muted-text">Your notifications inbox is completely clear! ✨</span>
+      ) : safeNotifications.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state__icon">🔔</div>
+          <h3>Your notifications inbox is completely clear!</h3>
+          <p>No new notifications match your current filters.</p>
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+        <div className="grouped-list">
           {Object.entries(groupedNotifications).map(([groupTitle, list]) => {
             if (list.length === 0) return null;
             return (
-              <div key={groupTitle}>
-                <h3 style={{ fontSize: "14px", fontWeight: "700", borderBottom: "1px solid var(--border)", paddingBottom: "6px", marginBottom: "12px", color: "var(--text-secondary)" }}>
-                  {groupTitle}
-                </h3>
-                
-                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div key={groupTitle} className="notification-group">
+                <h3 className="group-title">{groupTitle}</h3>
+                <div className="notif-items">
                   {list.map(notif => (
                     <div 
                       key={notif.id} 
-                      className={`stats-card ${!notif.isRead ? "active-border" : ""}`}
-                      style={{ padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", borderLeft: !notif.isRead ? "4px solid var(--primary)" : "none" }}
+                      className={`notif-card ${!notif.isRead ? "unread" : ""}`}
                     >
-                      <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                        <span style={{ fontSize: "20px" }}>{TYPE_EMOJI[notif.type] || "🔔"}</span>
-                        <div>
-                          <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{notif.title}</strong>
-                          <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: "2px 0 0 0" }}>{notif.message}</p>
-                          <span style={{ fontSize: "10px", color: "var(--text-muted)", display: "block", marginTop: "4px" }}>
+                      <div className="notif-card__body">
+                        <span className="notif-card__icon">{TYPE_EMOJI[notif.type] || "🔔"}</span>
+                        <div className="notif-card__content">
+                          <strong className="notif-card__title">{notif.title}</strong>
+                          <p className="notif-card__message">{notif.message}</p>
+                          <span className="notif-card__time">
                             {new Date(notif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", gap: "8px" }}>
+                      <div className="notif-card__actions">
                         {!notif.isRead && (
-                          <button className="btn-table-action" onClick={() => handleMarkRead(notif.id)}>Mark Read</button>
+                          <button className="btn-read" onClick={() => handleMarkRead(notif.id)}>Mark Read</button>
                         )}
-                        <button className="btn-table-action" style={{ borderColor: "#ef4444", color: "#ef4444" }} onClick={() => handleDelete(notif.id)}>Delete</button>
+                        <button className="btn-delete" onClick={() => handleDelete(notif.id)}>Delete</button>
                       </div>
                     </div>
                   ))}
@@ -314,50 +320,36 @@ export default function NotificationCenter() {
         </div>
       )}
 
-      {/* Pagination controls */}
-      {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", padding: "12px", marginTop: "16px" }}>
-          <button className="btn-table-action" disabled={page === 1} onClick={() => setPage(page - 1)}>
-            Previous
-          </button>
-          <span style={{ display: "flex", alignItems: "center", fontSize: "13px" }}>Page {page} of {totalPages}</span>
-          <button className="btn-table-action" disabled={page === totalPages} onClick={() => setPage(page + 1)}>
-            Next
-          </button>
-        </div>
-      )}
-
-      {/* PREFERENCES SETTINGS MODAL */}
       <AnimatePresence>
         {showSettings && (
-          <div className="create-modal-overlay" style={{ zIndex: 1100 }}>
-            <motion.div className="create-modal-content" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
-              <h3>Notification Inbox Settings</h3>
-              <form onSubmit={handleSavePreferences} className="modal-form" style={{ marginTop: "16px" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", cursor: "pointer" }}>
+          <div className="modal-overlay">
+            <motion.div className="modal-content" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}>
+              <h3>Notification Settings</h3>
+              <form onSubmit={handleSavePreferences}>
+                <div className="preference-items">
+                  <label className="checkbox-label">
                     <input type="checkbox" checked={prefChat} onChange={(e) => setPrefChat(e.target.checked)} />
                     Enable Chat Messages notifications
                   </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", cursor: "pointer" }}>
+                  <label className="checkbox-label">
                     <input type="checkbox" checked={prefTeams} onChange={(e) => setPrefTeams(e.target.checked)} />
                     Enable Team Invites & Requests
                   </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", cursor: "pointer" }}>
+                  <label className="checkbox-label">
                     <input type="checkbox" checked={prefContests} onChange={(e) => setPrefContests(e.target.checked)} />
                     Enable Contest Timers & Start times
                   </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", cursor: "pointer" }}>
+                  <label className="checkbox-label">
                     <input type="checkbox" checked={prefProblems} onChange={(e) => setPrefProblems(e.target.checked)} />
                     Enable Problem Solved & verdicts
                   </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", cursor: "pointer" }}>
+                  <label className="checkbox-label">
                     <input type="checkbox" checked={prefAnnounce} onChange={(e) => setPrefAnnounce(e.target.checked)} />
                     Enable System Announcements & Broadcasts
                   </label>
                 </div>
 
-                <div className="modal-actions" style={{ marginTop: "24px" }}>
+                <div className="modal-actions">
                   <button type="submit" className="btn-primary">Save Preferences</button>
                   <button type="button" className="btn-secondary" onClick={() => setShowSettings(false)}>Cancel</button>
                 </div>
@@ -366,7 +358,6 @@ export default function NotificationCenter() {
           </div>
         )}
       </AnimatePresence>
-
     </motion.div>
   );
 }

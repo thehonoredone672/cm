@@ -79,18 +79,7 @@ const submitCodeHandler = async (req, res, next) => {
     });
 
     if (executionResult.status === "ACCEPTED") {
-      try {
-        const { createNotification } = require("../notifications/notifications.service");
-        await createNotification(
-          req.user.id,
-          "SUBMISSION",
-          "Problem Solved!",
-          `Congratulations! You solved "${problem.title}".`,
-          `/problems/${problemId}`
-        );
-      } catch (err) {
-        console.error("Failed to trigger submission notification", err);
-      }
+      // Reverted without notifications
     }
 
     return res.status(201).json({
@@ -104,13 +93,76 @@ const submitCodeHandler = async (req, res, next) => {
 
 const getProblemSubmissionsHandler = async (req, res, next) => {
   try {
-    const submissions = await prisma.submission.findMany({
-      where: { problemId: req.params.problemId, userId: req.user.id },
-      orderBy: { createdAt: "desc" },
-      take: 20,
-    });
+    const { problemId } = req.params;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-    return res.status(200).json({ success: true, data: submissions });
+    const where = { 
+      problemId,
+      userId: req.user.id 
+    };
+
+    // Filters
+    if (req.query.language) {
+      where.language = req.query.language;
+    }
+    if (req.query.verdict) {
+      where.status = req.query.verdict;
+    }
+    if (req.query.status) {
+      if (req.query.status === "ACCEPTED_ONLY") {
+        where.status = "ACCEPTED";
+      } else if (req.query.status === "FAILED_ONLY") {
+        where.status = { not: "ACCEPTED" };
+      } else {
+        where.status = req.query.status;
+      }
+    }
+
+    // Search query matching Submission ID, language, or status
+    if (req.query.search) {
+      const searchStr = req.query.search.trim();
+      where.OR = [
+        { id: { contains: searchStr, mode: "insensitive" } },
+        { language: { contains: searchStr, mode: "insensitive" } },
+        { status: { contains: searchStr, mode: "insensitive" } }
+      ];
+    }
+
+    let orderBy = { createdAt: "desc" };
+    if (req.query.sort) {
+      if (req.query.sort === "OLDEST") {
+        orderBy = { createdAt: "asc" };
+      } else if (req.query.sort === "NEWEST") {
+        orderBy = { createdAt: "desc" };
+      } else if (req.query.sort === "RUNTIME") {
+        orderBy = { executionTime: "asc" };
+      } else if (req.query.sort === "MEMORY") {
+        orderBy = { memoryUsage: "asc" };
+      }
+    }
+
+    const [submissions, total] = await Promise.all([
+      prisma.submission.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit
+      }),
+      prisma.submission.count({ where })
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: submissions,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (err) {
     next(err);
   }

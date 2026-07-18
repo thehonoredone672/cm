@@ -540,13 +540,8 @@
   color: #ef4444;
 }
 
-/* 9. Notifications Preview */
-.notifications-preview-section {
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  padding: 24px;
-  border-radius: var(--radius-md);
-}
+
+
 
 .notifs-list {
   display: flex;

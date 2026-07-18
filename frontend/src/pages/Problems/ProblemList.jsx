@@ -255,139 +255,110 @@ export default function ProblemList() {
         </select>
       </div>
 
-      {/* PROBLEMS LIST TABLE */}
-      <div className="problems-table-container">
-        <table className="lc-table">
-          <thead>
-            <tr>
-              <th style={{ width: 50 }}>Status</th>
-              <th>Problem Name</th>
-              <th style={{ width: 100 }}>Difficulty</th>
-              <th>Category</th>
-              <th>Tags / Companies</th>
-              <th style={{ width: 110 }}>Acceptance</th>
-              <th style={{ width: 120 }}>Popularity</th>
-              <th style={{ width: 120 }}>Feedback</th>
-              <th style={{ width: 80, textAlign: "right" }}>Solve</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              [1, 2, 3, 4].map(i => (
-                <tr key={i} className="lc-skeleton-row">
-                  <td><div className="lc-skeleton-cell" style={{ width: "20px", height: "20px", borderRadius: "50%" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "60%" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "50px" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "60px" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "80px" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "40px" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "30px" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "60px" }} /></td>
-                  <td><div className="lc-skeleton-cell" style={{ width: "50px", marginLeft: "auto" }} /></td>
-                </tr>
-              ))
-            ) : problems.length === 0 ? (
-              <tr>
-                <td colSpan={9}>
-                  <div className="lc-empty">
-                    <span style={{ fontSize: "36px" }}>🔍</span>
-                    <h3>No coding problems found</h3>
-                    <p>Try refining your filters or adjusting the search keywords.</p>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              problems.map(prob => {
-                const hasLiked = prob.likeStatus === 1;
-                const hasDisliked = prob.likeStatus === -1;
+      {/* PROBLEMS LIST CARDS GRID */}
+      <div className="problems-cards-grid">
+        {loading ? (
+          [1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="lc-card lc-skeleton-card">
+              <div className="lc-skeleton-cell" style={{ width: "30%", height: "16px", marginBottom: "12px" }} />
+              <div className="lc-skeleton-cell" style={{ width: "80%", height: "24px", marginBottom: "16px" }} />
+              <div className="lc-skeleton-cell" style={{ width: "40%", height: "14px", marginBottom: "20px" }} />
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div className="lc-skeleton-cell" style={{ width: "20%", height: "18px" }} />
+                <div className="lc-skeleton-cell" style={{ width: "25%", height: "18px" }} />
+              </div>
+            </div>
+          ))
+        ) : problems.length === 0 ? (
+          <div className="lc-empty-grid">
+            <span style={{ fontSize: "48px" }}>🔍</span>
+            <h3>No coding challenges found</h3>
+            <p>Try refining your filters or adjusting your search terms.</p>
+          </div>
+        ) : (
+          problems.map(prob => {
+            const hasLiked = prob.likeStatus === 1;
+            const hasDisliked = prob.likeStatus === -1;
 
-                return (
-                  <tr key={prob.id} onClick={() => navigate(`/problems/${prob.id}`)}>
-                    <td>
-                      <div className="prob-status-indicator">
-                        {prob.solveStatus === "SOLVED" && (
-                          <span className="status-badge solved" title="Solved">✔</span>
-                        )}
-                        {prob.solveStatus === "ATTEMPTED" && (
-                          <span className="status-badge attempted" title="Attempted">●</span>
-                        )}
-                        {prob.solveStatus === "UNSOLVED" && (
-                          <span className="status-badge unsolved" title="Todo">○</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span className="lc-prob-title-text">{prob.title}</span>
-                        {prob.companies && prob.companies.length > 0 && (
-                          <div className="company-chips-row">
-                            {prob.companies.map(c => (
-                              <span key={c} className="company-chip">{c}</span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`lc-diff-badge lc-diff-badge--${DIFF_CLASS[prob.difficulty]}`}>
-                        {DIFF_LABEL[prob.difficulty]}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="problems-category-cell">{prob.category}</span>
-                    </td>
-                    <td>
-                      <div className="lc-tags">
-                        {prob.tags?.slice(0, 3).map(tag => (
-                          <span key={tag} className="lc-tag">{tag}</span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <span className="problems-category-cell" style={{ fontWeight: "700" }}>{prob.acceptanceRate}%</span>
-                    </td>
-                    <td>
-                      <span className="popularity-tally">👍 {prob.likesCount} | 👎 {prob.dislikesCount}</span>
-                    </td>
-                    <td>
-                      <div className="like-dislike-row" onClick={(e) => e.stopPropagation()}>
-                        {/* Bookmark Button */}
-                        <button 
-                          className="bookmark-btn" 
-                          onClick={(e) => handleToggleBookmark(e, prob.id)}
-                          title="Bookmark problem"
-                        >
-                          {prob.isBookmarked ? "⭐" : "☆"}
-                        </button>
-                        {/* Like Button */}
-                        <button 
-                          className={`like-action-btn ${hasLiked ? "active-like" : ""}`}
-                          onClick={(e) => handleToggleLike(e, prob.id, prob.likeStatus, hasLiked ? "NONE" : "LIKE")}
-                          title="Like problem"
-                        >
-                          👍
-                        </button>
-                        {/* Dislike Button */}
-                        <button 
-                          className={`like-action-btn ${hasDisliked ? "active-dislike" : ""}`}
-                          onClick={(e) => handleToggleLike(e, prob.id, prob.likeStatus, hasDisliked ? "NONE" : "DISLIKE")}
-                          title="Dislike problem"
-                        >
-                          👎
-                        </button>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: "right" }}>
-                      <button className="btn-table-action">
-                        Solve ➔
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            return (
+              <div key={prob.id} className="lc-card" onClick={() => navigate(`/problems/${prob.id}`)}>
+                <div className="lc-card-header">
+                  <div className="lc-card-header-left">
+                    <span className={`lc-diff-badge lc-diff-badge--${DIFF_CLASS[prob.difficulty] || "easy"}`}>
+                      {DIFF_LABEL[prob.difficulty] || prob.difficulty}
+                    </span>
+                    <span className="lc-card-category">{prob.category}</span>
+                  </div>
+                  <div className="lc-card-status-indicator">
+                    {prob.solveStatus === "SOLVED" && (
+                      <span className="status-badge solved" title="Solved">✔ Solved</span>
+                    )}
+                    {prob.solveStatus === "ATTEMPTED" && (
+                      <span className="status-badge attempted" title="Attempted">● Attempted</span>
+                    )}
+                  </div>
+                </div>
+
+                <h3 className="lc-card-title">{prob.title}</h3>
+
+                <div className="lc-card-stats-row">
+                  <div className="lc-card-stat">
+                    <span>Acceptance:</span>
+                    <strong>{prob.acceptanceRate}%</strong>
+                  </div>
+                  <div className="lc-card-stat">
+                    <span>Feedback:</span>
+                    <strong>👍 {prob.likesCount} / 👎 {prob.dislikesCount}</strong>
+                  </div>
+                </div>
+
+                <div className="lc-card-tags-row">
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                    {(prob.tags || []).slice(0, 3).map(tag => (
+                      <span key={tag} className="lc-tag">{tag}</span>
+                    ))}
+                  </div>
+                  {prob.companies && prob.companies.length > 0 && (
+                    <div className="lc-company-tags-container" style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "4px" }}>
+                      {prob.companies.slice(0, 2).map(c => (
+                        <span key={c} className="company-chip">{c}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="lc-card-footer" onClick={(e) => e.stopPropagation()}>
+                  <div className="like-dislike-row">
+                    <button 
+                      className="bookmark-btn" 
+                      onClick={(e) => handleToggleBookmark(e, prob.id)}
+                      title="Bookmark problem"
+                    >
+                      {prob.isBookmarked ? "⭐" : "☆"}
+                    </button>
+                    <button 
+                      className={`like-action-btn ${hasLiked ? "active-like" : ""}`}
+                      onClick={(e) => handleToggleLike(e, prob.id, prob.likeStatus, hasLiked ? "NONE" : "LIKE")}
+                      title="Like problem"
+                    >
+                      👍
+                    </button>
+                    <button 
+                      className={`like-action-btn ${hasDisliked ? "active-dislike" : ""}`}
+                      onClick={(e) => handleToggleLike(e, prob.id, prob.likeStatus, hasDisliked ? "NONE" : "DISLIKE")}
+                      title="Dislike problem"
+                    >
+                      👎
+                    </button>
+                  </div>
+                  <button className="btn-table-action" onClick={() => navigate(`/problems/${prob.id}`)}>
+                    Solve ➔
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* PAGINATION CONTROLS */}

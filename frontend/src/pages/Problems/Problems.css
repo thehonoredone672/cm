@@ -1020,6 +1020,122 @@
   color: var(--text-muted);
 }
 
+.problems-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.lc-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  box-sizing: border-box;
+}
+.lc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+.lc-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.lc-card-header-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.lc-card-category {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--background);
+  border: 1px solid var(--border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.lc-card-status-indicator .status-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.lc-card-status-indicator .status-badge.solved {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+}
+.lc-card-status-indicator .status-badge.attempted {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.lc-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+  line-height: 1.4;
+}
+
+.lc-card-stats-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 14px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.lc-card-stat {
+  display: flex;
+  gap: 4px;
+}
+
+.lc-card-tags-row {
+  margin-bottom: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lc-company-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lc-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-light);
+  padding-top: 12px;
+  margin-top: auto;
+}
+
+.lc-skeleton-card {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.lc-empty-grid {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px;
+  color: var(--text-secondary);
+}
+
 .problems-details-three-columns {
   display: grid;
   grid-template-columns: 1.2fr 1.6fr 1fr;
@@ -1030,4 +1146,30 @@
   .problems-details-three-columns {
     grid-template-columns: 1fr;
   }
+}
+
+/* Submission Verdict Badge Colors */
+.status-badge.accepted, .lc-console__badge--accepted {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #22c55e !important;
+}
+.status-badge.wrong_answer, .lc-console__badge--wrong_answer {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+}
+.status-badge.time_limit_exceeded, .lc-console__badge--time_limit_exceeded {
+  background: rgba(245, 158, 11, 0.1) !important;
+  color: #f59e0b !important; /* Orange */
+}
+.status-badge.runtime_error, .lc-console__badge--runtime_error {
+  background: rgba(168, 85, 247, 0.1) !important;
+  color: #a855f7 !important; /* Purple */
+}
+.status-badge.compilation_error, .lc-console__badge--compilation_error {
+  background: rgba(234, 179, 8, 0.1) !important;
+  color: #eab308 !important; /* Yellow */
+}
+.status-badge.memory_limit_exceeded, .lc-console__badge--memory_limit_exceeded {
+  background: rgba(236, 72, 153, 0.1) !important;
+  color: #ec4899 !important; /* Pink */
 }

@@ -404,19 +404,7 @@ const inviteToTeamByEmail = async (senderId, teamId, email) => {
     throw new Error(`User with email "${email}" not found on CodeMatch.`);
   }
 
-  // Trigger invite notifications
-  try {
-    const { createNotification } = require("../notifications/notifications.service");
-    await createNotification(
-      targetUser.id,
-      "TEAM_INVITE",
-      `Team Invite: ${team.name}`,
-      `You have been invited to join the team "${team.name}". Join code: ${team.joinCode}`,
-      `/teams`
-    );
-  } catch (err) {
-    console.error("Failed to trigger team invite notification", err);
-  }
+ 
 
   return { success: true, message: "Invite sent successfully" };
 };

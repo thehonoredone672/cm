@@ -37,19 +37,7 @@ const applyToTeamRequest = async (
     },
   });
 
-  // Trigger Team Application notification
-  try {
-    const { createNotification } = require("../notifications/notifications.service");
-    await createNotification(
-      app.teamRequest.creatorId,
-      "TEAM_APPLICATION",
-      "New Team Application",
-      `${app.applicant.name} applied to your team request "${app.teamRequest.title}".`,
-      "/dashboard"
-    );
-  } catch (err) {
-    console.error("Failed to trigger application notification", err);
-  }
+
 
   return app;
 };
@@ -134,19 +122,7 @@ const updateApplicationStatus =
       },
     });
 
-    // Trigger notification to applicant
-    try {
-      const { createNotification } = require("../notifications/notifications.service");
-      await createNotification(
-        application.applicantId,
-        "TEAM_APPLICATION",
-        `Application ${status.toLowerCase()}`,
-        `Your application for "${application.teamRequest.title}" was ${status.toLowerCase()}.`,
-        "/dashboard"
-      );
-    } catch (err) {
-      console.error("Failed to trigger application update notification", err);
-    }
+
 
     return updated;
   };

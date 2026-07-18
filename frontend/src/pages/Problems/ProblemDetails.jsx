@@ -10,11 +10,21 @@ import {
   reportProblem, 
   getProblemEditorial 
 } from "../../services/problemService";
+import { getSubmissions } from "../../services/submissionService";
 import { useAuth } from "../../context/AuthContext";
 import "./Problems.css";
 
 const DIFF_LABEL = { EASY: "Easy", MEDIUM: "Medium", HARD: "Hard" };
 const DIFF_CLASS = { EASY: "easy", MEDIUM: "medium", HARD: "hard" };
+
+const VERDICT_META = {
+  ACCEPTED: { label: "Accepted", class: "accepted" },
+  WRONG_ANSWER: { label: "Wrong Answer", class: "wrong_answer" },
+  RUNTIME_ERROR: { label: "Runtime Error", class: "runtime_error" },
+  TIME_LIMIT_EXCEEDED: { label: "Time Limit Exceeded", class: "time_limit_exceeded" },
+  COMPILATION_ERROR: { label: "Compilation Error", class: "compilation_error" },
+  MEMORY_LIMIT_EXCEEDED: { label: "Memory Limit Exceeded", class: "memory_limit_exceeded" }
+};
 
 export default function ProblemDetails() {
   const { id } = useParams();
@@ -23,6 +33,7 @@ export default function ProblemDetails() {
 
   // Core States
   const [problem, setProblem] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [toastMessage, setToastMessage] = useState(null);
@@ -56,6 +67,9 @@ export default function ProblemDetails() {
 
       const edData = await getProblemEditorial(id);
       setEditorial(edData);
+
+      const subsData = await getSubmissions(id, { limit: 5 }).catch(() => null);
+      setSubmissions(subsData?.data || []);
     } catch (err) {
       console.error(err);
       setErrorMessage("Failed to load problem details.");
@@ -407,9 +421,58 @@ export default function ProblemDetails() {
                 <strong>{problem.difficulty}</strong>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span className="muted-text">Bookmarks:</span>
-                <strong>{problem.bookmarksCount}</strong>
+                <span className="muted-text">Time Limit:</span>
+                <strong>{problem.timeLimit || "2000 ms"}</strong>
               </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="muted-text">Memory Limit:</span>
+                <strong>{problem.memoryLimit || "256 MB"}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span className="muted-text">Author:</span>
+                <strong>{problem.author || "System Admin"}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Submission History Section */}
+          <div className="stats-card">
+            <h3 className="lc-section-title">🕒 Recent Submissions</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {(submissions || []).length === 0 ? (
+                <span className="muted-text" style={{ fontSize: "12px" }}>No submissions yet.</span>
+              ) : (
+                (submissions || []).slice(0, 5).map(sub => {
+                  const statusMetaVal = VERDICT_META[sub.status] || { label: sub.status, class: "runtime_error" };
+                  return (
+                    <div 
+                      key={sub.id} 
+                      onClick={() => navigate(`/submissions/${sub.id}`)}
+                      style={{ 
+                        display: "flex", 
+                        justifyContent: "space-between", 
+                        alignItems: "center", 
+                        borderBottom: "1px solid var(--border-light)", 
+                        paddingBottom: "6px", 
+                        cursor: "pointer" 
+                      }}
+                      className="team-item-row"
+                    >
+                      <div>
+                        <span className={`status-badge ${statusMetaVal.class}`} style={{ fontSize: "10px", padding: "1px 4px", borderRadius: "3px" }}>
+                          {statusMetaVal.label}
+                        </span>
+                        <span className="meta-details" style={{ display: "block", fontSize: "10px", marginTop: "2px" }}>
+                          {sub.language} • {new Date(sub.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: "11px", fontWeight: "700" }}>
+                        {sub.executionTime ? `${Math.round(sub.executionTime * 1000)} ms` : "—"}
+                      </span>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
 

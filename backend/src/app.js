@@ -65,7 +65,7 @@ const teamRoutes = require("./modules/teams/teams.routes");
 const problemRoutes = require("./modules/problems/problems.routes");
 const submissionRoutes = require("./modules/submissions/submissions.routes");
 const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
-const notificationRoutes = require("./modules/notifications/notifications.routes");
+
 const projectRoutes = require("./modules/projects/projects.routes");
 const recommendationRoutes = require("./modules/recommendations/recommendations.routes");
 const adminRoutes = require("./modules/admin/admin.routes");
@@ -194,10 +194,7 @@ app.use(
   dashboardRoutes
 );
 
-app.use(
-  "/api/notifications",
-  notificationRoutes
-);
+
 
 const reportRoutes = require("./modules/reports/reports.routes");
 const hackathonRoutes = require("./modules/hackathons/hackathons.routes");
@@ -316,6 +313,7 @@ app.use(
   "/api/admin-dashboard",
   adminDashboardRoutes
 );
+
 
 // Fallback 404 JSON response handler (Sprint 5.2)
 app.use((req, res, next) => {

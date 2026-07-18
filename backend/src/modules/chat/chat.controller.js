@@ -5,8 +5,7 @@ const {
   createConversation, getUserConversations,
   markAsRead, sendMessage, getMessages,
   getTeammates, deleteMessage, editMessage,
-  pinMessage, addReaction, removeReaction,
-  pinConversation
+  addReaction, removeReaction
 } = require("./chat.service");
 
 const createConversationHandler = asyncHandler(async (req, res) => {
@@ -19,11 +18,6 @@ const getConversationsHandler = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: conversations });
 });
 
-const pinConversationHandler = asyncHandler(async (req, res) => {
-  const { isPinned } = req.body;
-  const result = await pinConversation(req.user.id, req.params.id, isPinned);
-  res.status(200).json({ success: true, data: result });
-});
 
 const markSeenHandler = asyncHandler(async (req, res) => {
   const result = await markAsRead(req.params.id, req.user.id);
@@ -58,11 +52,6 @@ const deleteMessageHandler = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: result });
 });
 
-const pinMessageHandler = asyncHandler(async (req, res) => {
-  const { isPinned } = req.body;
-  const message = await pinMessage(req.params.messageId, req.user.id, isPinned);
-  res.status(200).json({ success: true, data: message });
-});
 
 const addReactionHandler = asyncHandler(async (req, res) => {
   const { emoji } = req.body;
@@ -80,6 +69,5 @@ module.exports = {
   createConversationHandler, getConversationsHandler,
   markSeenHandler, sendMessageHandler, getMessagesHandler,
   getTeammatesHandler, deleteMessageHandler, editMessageHandler,
-  pinMessageHandler, addReactionHandler, removeReactionHandler,
-  pinConversationHandler
+  addReactionHandler, removeReactionHandler
 };

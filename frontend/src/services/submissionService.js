@@ -21,10 +21,10 @@ export const submitCode = async (problemId, code, language) => {
   }
 };
 
-export const getSubmissions = async (problemId) => {
+export const getSubmissions = async (problemId, params = {}) => {
   try {
-    const response = await api.get(`/submissions/problem/${problemId}`);
-    return response.data.data;
+    const response = await api.get(`/submissions/problem/${problemId}`, { params });
+    return response.data;
   } catch (err) {
     const msg = err.userMessage || err.response?.data?.message || err.message || "Could not load submissions.";
     throw Object.assign(err, { displayMessage: msg });

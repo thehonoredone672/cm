@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../context/AuthContext";
-import NotificationDropdown from "./NotificationDropdown";
+
 import "./Navbar.css";
 
 export default function Navbar() {
@@ -44,7 +44,6 @@ export default function Navbar() {
 
         {isAuthenticated && user ? (
           <div className="navbar__user">
-            <NotificationDropdown />
             <span className="navbar__username">{user.name}</span>
             <button className="logout-btn" onClick={logout} title="Sign Out">
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ marginRight: "6px", display: "inline-block", verticalAlign: "middle" }}>

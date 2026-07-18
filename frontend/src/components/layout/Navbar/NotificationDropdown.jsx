@@ -32,16 +32,42 @@ export default function NotificationDropdown() {
       setNotifications((prev) => [notification, ...prev]);
     };
 
-    socket.on("new_notification", handleNewNotification);
+    const handleNotificationRead = (updatedNotif) => {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === updatedNotif.id ? updatedNotif : n))
+      );
+    };
+
+    const handleNotificationDelete = ({ id }) => {
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
+    };
+
+    const handleNotificationUpdate = (payload) => {
+      if (payload.isAllRead) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      } else if (payload.isAllDeleted) {
+        setNotifications([]);
+      }
+    };
+
+    socket.on("notification:new", handleNewNotification);
+    socket.on("notification:read", handleNotificationRead);
+    socket.on("notification:delete", handleNotificationDelete);
+    socket.on("notification:update", handleNotificationUpdate);
+
     return () => {
-      socket.off("new_notification", handleNewNotification);
+      socket.off("notification:new", handleNewNotification);
+      socket.off("notification:read", handleNotificationRead);
+      socket.off("notification:delete", handleNotificationDelete);
+      socket.off("notification:update", handleNotificationUpdate);
     };
   }, [socket]);
 
   const fetchNotifications = async () => {
     try {
       const data = await getNotifications();
-      setNotifications(data);
+      const safeData = Array.isArray(data) ? data : [];
+      setNotifications(safeData);
     } catch (err) {
       console.error("Failed to load notifications", err);
     }
@@ -73,7 +99,8 @@ export default function NotificationDropdown() {
     }
   };
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const safeNotifications = Array.isArray(notifications) ? notifications : [];
+  const unreadCount = safeNotifications.filter((n) => !n.isRead).length;
 
   const formatTime = (dateString) => {
     const diffMs = Date.now() - new Date(dateString).getTime();
@@ -104,10 +131,10 @@ export default function NotificationDropdown() {
           </div>
 
           <div className="notif-list">
-            {notifications.length === 0 ? (
+            {safeNotifications.length === 0 ? (
               <div className="notif-empty">No notifications yet.</div>
             ) : (
-              notifications.map((notif) => (
+              safeNotifications.map((notif) => (
                 <button
                   key={notif.id}
                   className={`notif-item ${!notif.isRead ? "unread" : ""}`}

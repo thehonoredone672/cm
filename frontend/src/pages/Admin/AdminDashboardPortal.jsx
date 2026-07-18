@@ -214,9 +214,7 @@ export default function AdminDashboardPortal() {
             <button className="lc-submit-btn" style={{ justifyContent: "center", background: "var(--primary-dark)" }} onClick={() => navigate("/contests")}>
               Create Contest Agenda 📅
             </button>
-            <button className="lc-run-btn" style={{ justifyContent: "center" }} onClick={() => navigate("/notifications")}>
-              Broadcase Announcement 📢
-            </button>
+           
           </div>
         </div>
 

@@ -66,18 +66,7 @@ const sendInvite = async (
     },
   });
 
-  try {
-    const { createNotification } = require("../notifications/notifications.service");
-    await createNotification(
-      receiverId,
-      "INVITE",
-      "New Collaboration Invite",
-      `${invite.sender.name} invited you to collaborate.`,
-      "/invites/received"
-    );
-  } catch (err) {
-    console.error("Failed to generate invite notification", err);
-  }
+
 
   return invite;
 };
@@ -168,18 +157,7 @@ const acceptInvite =
         }
       });
 
-      try {
-        const { createNotification } = require("../notifications/notifications.service");
-        await createNotification(
-          updatedInvite.senderId,
-          "INVITE",
-          "Invitation Accepted",
-          `${updatedInvite.receiver.name} accepted your team invitation.`,
-          "/chat"
-        );
-      } catch (err) {
-        console.error("Failed to generate invite accepted notification", err);
-      }
+
 
       return updatedInvite;
     });

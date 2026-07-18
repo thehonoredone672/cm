@@ -1,50 +1,61 @@
-"use strict";
-
 const prisma = require("../../config/prisma");
 const { getIO } = require("../../socket/socket");
 
-const emitSocketEvent = (userId, eventName, data) => {
-  try {
-    const io = getIO();
-    io.to(userId).emit(eventName, data);
-  } catch (err) {
-    console.error(`Failed to emit socket event ${eventName}`, err);
-  }
-};
-
 const createNotification = async (userId, type, title, message, link = null) => {
-  // Check user preference before writing
-  let preferences = await prisma.notificationPreference.findUnique({
-    where: { userId }
-  });
-
-  if (!preferences) {
-    preferences = await prisma.notificationPreference.create({
-      data: { userId }
+  try {
+    // Check if user has settings preference
+    let preferences = await prisma.notificationPreference.findUnique({
+      where: { userId },
     });
-  }
 
-  // Map type to preference field
-  const prefMap = {
-    CHAT: "chat",
-    TEAM: "teams",
-    CONTEST: "contests",
-    SUBMISSION: "problems",
-    SYSTEM: "announcements"
-  };
+    if (!preferences) {
+      preferences = await prisma.notificationPreference.create({
+        data: { userId },
+      });
+    }
 
-  const prefField = prefMap[type] || "announcements";
-  if (preferences[prefField] === false) {
-    // User disabled this notification type
+    // Map type to preference field
+    const typeMapping = {
+      CHAT: "chat",
+      TEAM: "teams",
+      TEAM_APPLICATION: "teams",
+      TEAM_INVITE: "teams",
+      CONTEST: "contests",
+      SUBMISSION: "problems",
+      PROBLEM: "problems",
+      LEADERBOARD: "leaderboard",
+      SYSTEM: "announcements",
+      ANNOUNCEMENT: "announcements",
+    };
+
+    const prefField = typeMapping[type] || "announcements";
+    if (preferences[prefField] === false) {
+      return null;
+    }
+
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        message,
+        link,
+      },
+    });
+
+    // Socket emit
+    try {
+      const io = getIO();
+      io.to(userId).emit("notification:new", notification);
+    } catch (socketErr) {
+      console.error("Failed to emit realtime notification", socketErr.message);
+    }
+
+    return notification;
+  } catch (err) {
+    console.error("Failed to create notification", err.message);
     return null;
   }
-
-  const notification = await prisma.notification.create({
-    data: { userId, type, title, message, link }
-  });
-
-  emitSocketEvent(userId, "notification:new", notification);
-  return notification;
 };
 
 const getNotificationsForUser = async (userId, query = {}) => {
@@ -65,7 +76,7 @@ const getNotificationsForUser = async (userId, query = {}) => {
   if (query.search) {
     where.OR = [
       { title: { contains: query.search, mode: "insensitive" } },
-      { message: { contains: query.search, mode: "insensitive" } }
+      { message: { contains: query.search, mode: "insensitive" } },
     ];
   }
 
@@ -74,9 +85,9 @@ const getNotificationsForUser = async (userId, query = {}) => {
       where,
       orderBy: { createdAt: "desc" },
       skip,
-      take: limit
+      take: limit,
     }),
-    prisma.notification.count({ where })
+    prisma.notification.count({ where }),
   ]);
 
   return {
@@ -85,72 +96,109 @@ const getNotificationsForUser = async (userId, query = {}) => {
       total,
       page,
       limit,
-      pages: Math.ceil(total / limit)
-    }
+      pages: Math.ceil(total / limit),
+    },
   };
 };
 
 const markRead = async (id, userId) => {
-  const notif = await prisma.notification.findUnique({ where: { id } });
-  if (!notif) throw new Error("Notification not found");
-  if (notif.userId !== userId) throw new Error("Unauthorized");
+  const notification = await prisma.notification.findUnique({
+    where: { id },
+  });
+
+  if (!notification) throw new Error("Notification not found");
+  if (notification.userId !== userId) throw new Error("Unauthorized");
 
   const updated = await prisma.notification.update({
     where: { id },
-    data: { isRead: true }
+    data: { isRead: true },
   });
 
-  emitSocketEvent(userId, "notification:read", updated);
+  try {
+    const io = getIO();
+    io.to(userId).emit("notification:read", updated);
+  } catch (err) {
+    console.error("Failed to emit notification:read via socket", err.message);
+  }
+
   return updated;
 };
 
 const markAllRead = async (userId) => {
   await prisma.notification.updateMany({
     where: { userId, isRead: false },
-    data: { isRead: true }
+    data: { isRead: true },
   });
 
-  emitSocketEvent(userId, "notification:update", { isAllRead: true });
+  try {
+    const io = getIO();
+    io.to(userId).emit("notification:update", { isAllRead: true });
+  } catch (err) {
+    console.error("Failed to emit notification:update via socket", err.message);
+  }
+
   return { success: true };
 };
 
 const deleteNotification = async (id, userId) => {
-  const notif = await prisma.notification.findUnique({ where: { id } });
-  if (!notif) throw new Error("Notification not found");
-  if (notif.userId !== userId) throw new Error("Unauthorized");
+  const notification = await prisma.notification.findUnique({
+    where: { id },
+  });
 
-  await prisma.notification.delete({ where: { id } });
+  if (!notification) throw new Error("Notification not found");
+  if (notification.userId !== userId) throw new Error("Unauthorized");
 
-  emitSocketEvent(userId, "notification:delete", { id });
+  await prisma.notification.delete({
+    where: { id },
+  });
+
+  try {
+    const io = getIO();
+    io.to(userId).emit("notification:delete", { id });
+  } catch (err) {
+    console.error("Failed to emit notification:delete via socket", err.message);
+  }
+
   return { id };
 };
 
 const deleteAllNotifications = async (userId) => {
-  await prisma.notification.deleteMany({ where: { userId } });
-  emitSocketEvent(userId, "notification:update", { isAllDeleted: true });
+  await prisma.notification.deleteMany({
+    where: { userId },
+  });
+
+  try {
+    const io = getIO();
+    io.to(userId).emit("notification:update", { isAllDeleted: true });
+  } catch (err) {
+    console.error("Failed to emit notification:update via socket", err.message);
+  }
+
   return { success: true };
 };
 
-// ─── Preferences ────────────────────────────────────────────────────────────────
-
 const getNotificationPreferences = async (userId) => {
-  let prefs = await prisma.notificationPreference.findUnique({
-    where: { userId }
+  let preferences = await prisma.notificationPreference.findUnique({
+    where: { userId },
   });
-  if (!prefs) {
-    prefs = await prisma.notificationPreference.create({
-      data: { userId }
+
+  if (!preferences) {
+    preferences = await prisma.notificationPreference.create({
+      data: { userId },
     });
   }
-  return prefs;
+
+  return preferences;
 };
 
 const updateNotificationPreferences = async (userId, data) => {
-  const { chat, teams, contests, problems, leaderboard, announcements, marketing } = data;
   return prisma.notificationPreference.upsert({
     where: { userId },
-    update: { chat, teams, contests, problems, leaderboard, announcements, marketing },
-    create: { userId, chat, teams, contests, problems, leaderboard, announcements, marketing }
+    update: data,
+    create: {
+      userId,
+      ...data,
+    },
   });
 };
 
@@ -162,5 +210,5 @@ module.exports = {
   deleteNotification,
   deleteAllNotifications,
   getNotificationPreferences,
-  updateNotificationPreferences
+  updateNotificationPreferences,
 };

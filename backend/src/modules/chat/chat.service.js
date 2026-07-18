@@ -156,7 +156,6 @@ const getUserConversations = async (userId) => {
     conversations.map(async (conv) => {
       const self = conv.participants.find((p) => p.userId === userId);
       const lastReadAt = self?.lastReadAt ?? null;
-      const isPinned = self?.isPinned ?? false;
 
       const unreadCount = await prisma.message.count({
         where: {
@@ -167,29 +166,11 @@ const getUserConversations = async (userId) => {
         },
       });
 
-      return { ...conv, unreadCount, isPinned };
+      return { ...conv, unreadCount };
     })
   );
 
   return withMeta;
-};
-
-// ─── Pin Conversation ──────────────────────────────────────────────────────────
-
-const pinConversation = async (userId, conversationId, isPinned) => {
-  const participant = await prisma.conversationParticipant.findUnique({
-    where: {
-      conversationId_userId: { conversationId, userId }
-    }
-  });
-  if (!participant) throw new Error("Participant not found in conversation.");
-
-  return prisma.conversationParticipant.update({
-    where: {
-      conversationId_userId: { conversationId, userId }
-    },
-    data: { isPinned }
-  });
 };
 
 // ─── Messages ─────────────────────────────────────────────────────────────────
@@ -256,23 +237,7 @@ const sendMessage = async (conversationId, senderId, text, fileUrl = null, fileT
     console.error("[chat.service] Socket emit failed:", err.message);
   }
 
-  // Push notification to recipients
-  try {
-    const { createNotification } = require("../notifications/notifications.service");
-    const recipients = await prisma.conversationParticipant.findMany({
-      where: { conversationId, userId: { not: senderId } },
-    });
-    for (const r of recipients) {
-      await createNotification(
-        r.userId, "CHAT",
-        `New message from ${message.sender.name}`,
-        text.length > 60 ? text.slice(0, 60) + "\u2026" : text,
-        "/chat"
-      );
-    }
-  } catch (err) {
-    console.error("[chat.service] Notification failed:", err.message);
-  }
+
 
   return message;
 };
@@ -328,31 +293,7 @@ const deleteMessage = async (messageId, userId) => {
   return updated;
 };
 
-const pinMessage = async (messageId, userId, isPinned) => {
-  const message = await prisma.message.findUnique({ where: { id: messageId } });
-  if (!message) throw new Error("Message not found.");
 
-  const allowed = await isParticipant(message.conversationId, userId);
-  if (!allowed) throw new Error("Not authorized.");
-
-  const updated = await prisma.message.update({
-    where: { id: messageId },
-    data: { isPinned },
-    include: { 
-      sender: { select: { id: true, name: true } },
-      reactions: { include: { user: { select: { id: true, name: true } } } }
-    },
-  });
-
-  try {
-    const io = getIO();
-    io.to(message.conversationId).emit("message_pinned_toggled", updated);
-  } catch (e) {
-    console.error("[chat.service] Pin emit failed", e.message);
-  }
-
-  return updated;
-};
 
 // ─── Emoji Reactions ───────────────────────────────────────────────────────────
 
@@ -431,6 +372,6 @@ const markAsRead = async (conversationId, userId) => {
 module.exports = {
   isParticipant, getTeammates, createConversation,
   getUserConversations, getMessages, sendMessage,
-  deleteMessage, editMessage, pinMessage, addReaction,
-  removeReaction, markAsRead, pinConversation
+  deleteMessage, editMessage, addReaction,
+  removeReaction, markAsRead
 };

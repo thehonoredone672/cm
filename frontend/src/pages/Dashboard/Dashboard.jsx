@@ -5,7 +5,6 @@ import { getDashboardStats } from "../../services/dashboardService";
 import { getMatches } from "../../services/matchService";
 import { getReceivedInvites, acceptInvite, rejectInvite } from "../../services/teamInviteService";
 import { getLatestSubmissions } from "../../services/submissionService";
-import { getNotifications } from "../../services/notificationService";
 import { getProblems } from "../../services/problemService";
 import { useAuth } from "../../context/AuthContext";
 import "./Dashboard.css";
@@ -37,7 +36,7 @@ export default function Dashboard() {
   const [matches, setMatches] = useState([]);
   const [invites, setInvites] = useState([]);
   const [submissions, setSubmissions] = useState([]);
-  const [notifications, setNotifications] = useState([]);
+  
   const [hackathons, setHackathons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -51,21 +50,25 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError("");
-      
-      const [statsData, matchesData, invitesData, subsData, notifsData, hacksData] = await Promise.all([
-        getDashboardStats(),
-        getMatches(),
-        getReceivedInvites(),
-        getLatestSubmissions(),
-        getNotifications(),
-        getProblems() // We can query problems or check hackathons. Let's fetch hackathons below.
-      ]);
+      const [
+          statsData,
+          matchesData,
+          invitesData,
+          subsData,
+          hacksData
+        ] = await Promise.all([
+          getDashboardStats(),
+          getMatches(),
+          getReceivedInvites(),
+          getLatestSubmissions(),
+          getProblems()
+        ]);
 
-      setStats(statsData);
-      setMatches(matchesData.slice(0, 3)); // Display top 3
-      setInvites(invitesData.filter(i => i.status === "PENDING"));
-      setSubmissions(subsData);
-      setNotifications(notifsData.slice(0, 3));
+        setStats(statsData);
+        setMatches(Array.isArray(matchesData) ? matchesData.slice(0, 3) : []);
+        setInvites(Array.isArray(invitesData) ? invitesData.filter((i) => i.status === "PENDING") : []);
+        setSubmissions(Array.isArray(subsData) ? subsData : []);
+
 
       // Fetch hackathons from backend
       const hackRes = await fetch("http://localhost:5000/api/hackathons", {
@@ -408,23 +411,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* 9. Notifications Preview */}
-          <div className="notifications-preview-section">
-            <h3 className="section-title">🔔 Latest Notifications</h3>
-            {notifications.length === 0 ? (
-              <div className="empty-notifs-card">No new notifications.</div>
-            ) : (
-              <div className="notifs-list">
-                {notifications.map(notif => (
-                  <div key={notif.id} className="notif-item-card" onClick={() => navigate(notif.link || "/dashboard")}>
-                    <strong>{notif.title}</strong>
-                    <p>{notif.message}</p>
-                    <span className="notif-date">{new Date(notif.createdAt).toLocaleDateString()}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* 10. Upcoming Events & Hackathons */}
           <div className="upcoming-events-section">
