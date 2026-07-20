@@ -360,6 +360,55 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Coding Progress Widget */}
+          <div className="completion-card coding-progress-card">
+            <div className="completion-card-header">
+              <h3>Coding Progress</h3>
+              <span className="completion-pct-badge">{cs.solvedCount} Solved</span>
+            </div>
+            
+            <div className="progress-details-grid" style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {/* Easy Progress */}
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                  <span style={{ color: "#22c55e", fontWeight: "600" }}>Easy</span>
+                  <span>{cs.easySolved}</span>
+                </div>
+                <div className="progress-bar-container" style={{ height: "6px" }}>
+                  <div className="progress-bar-fill" style={{ width: `${cs.solvedCount > 0 ? (cs.easySolved / cs.solvedCount) * 100 : 0}%`, background: "#22c55e" }} />
+                </div>
+              </div>
+
+              {/* Medium Progress */}
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                  <span style={{ color: "#ffb800", fontWeight: "600" }}>Medium</span>
+                  <span>{cs.mediumSolved}</span>
+                </div>
+                <div className="progress-bar-container" style={{ height: "6px" }}>
+                  <div className="progress-bar-fill" style={{ width: `${cs.solvedCount > 0 ? (cs.mediumSolved / cs.solvedCount) * 100 : 0}%`, background: "#ffb800" }} />
+                </div>
+              </div>
+
+              {/* Hard Progress */}
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                  <span style={{ color: "#ef4444", fontWeight: "600" }}>Hard</span>
+                  <span>{cs.hardSolved}</span>
+                </div>
+                <div className="progress-bar-container" style={{ height: "6px" }}>
+                  <div className="progress-bar-fill" style={{ width: `${cs.solvedCount > 0 ? (cs.hardSolved / cs.solvedCount) * 100 : 0}%`, background: "#ef4444" }} />
+                </div>
+              </div>
+
+              {/* Success Rate */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--border-light)", paddingTop: "12px", marginTop: "4px" }}>
+                <span className="muted-text" style={{ fontSize: "12px" }}>Success Rate:</span>
+                <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{cs.successRate}%</strong>
+              </div>
+            </div>
+          </div>
+
           {/* 7. Pending Team Invitations Received */}
           {invites.length > 0 && (
             <div className="pending-invites-section">
