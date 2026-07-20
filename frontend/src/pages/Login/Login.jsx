@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 import "../../styles/auth.css";
 
@@ -21,12 +21,14 @@ export default function Login() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     setForm((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
+    if (error) setError(null);
   };
 
   const handleSubmit = async (e) => {
@@ -34,9 +36,10 @@ export default function Login() {
 
     try {
       setLoading(true);
+      setError(null);
       const response = await loginUser(form);
       if (!response.success) {
-        alert("Login Failed");
+        setError("Login Failed");
         return;
       }
 
@@ -48,11 +51,11 @@ export default function Login() {
 
       navigate("/", { replace: true });
 
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
 
-      alert(
-        error.response?.data?.message ||
+      setError(
+        err.response?.data?.message ||
           "Login Failed"
       );
     } finally {
@@ -71,6 +74,21 @@ export default function Login() {
         <p className="auth-subtitle">
           Sign in to continue
         </p>
+
+        {error && (
+          <div className="auth-error-banner" style={{
+            background: "rgba(239, 68, 68, 0.1)",
+            color: "#ef4444",
+            padding: "10px 14px",
+            borderRadius: "6px",
+            fontSize: "12px",
+            marginBottom: "16px",
+            border: "1px solid rgba(239, 68, 68, 0.2)",
+            textAlign: "center"
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
 
@@ -103,6 +121,10 @@ export default function Login() {
           </Button>
 
         </form>
+
+        <p className="auth-footer" style={{ marginTop: "16px", textAlign: "center", fontSize: "12px" }}>
+          Don't have an account? <Link to="/register" style={{ color: "var(--primary)", textDecoration: "none", fontWeight: "600" }}>Sign Up</Link>
+        </p>
 
       </div>
     </div>

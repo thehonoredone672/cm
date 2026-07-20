@@ -14,7 +14,7 @@ export default function ReceivedInvites() {
     try {
       setLoading(true);
       const data = await getReceivedInvites();
-      setInvites(data);
+      setInvites(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
     } finally {

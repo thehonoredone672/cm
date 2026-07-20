@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import api from "../../api/axios";
 import { getDashboardStats } from "../../services/dashboardService";
 import { getMatches } from "../../services/matchService";
 import { getReceivedInvites, acceptInvite, rejectInvite } from "../../services/teamInviteService";
@@ -71,12 +72,9 @@ export default function Dashboard() {
 
 
       // Fetch hackathons from backend
-      const hackRes = await fetch("http://localhost:5000/api/hackathons", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-      });
-      const hackPayload = await hackRes.json();
-      if (hackPayload?.success) {
-        setHackathons(hackPayload.data.slice(0, 2));
+      const response = await api.get("/hackathons");
+      if (response?.data?.success) {
+        setHackathons(Array.isArray(response.data.data) ? response.data.data.slice(0, 2) : []);
       }
 
     } catch (err) {

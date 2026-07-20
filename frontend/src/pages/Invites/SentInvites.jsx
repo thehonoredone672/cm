@@ -14,7 +14,7 @@ export default function SentInvites() {
     try {
       setLoading(true);
       const data = await getSentInvites();
-      setInvites(data);
+      setInvites(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
     } finally {
