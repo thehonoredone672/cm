@@ -233,10 +233,10 @@ export default function ProblemDetails() {
           <div className="stats-card">
             <h3 className="lc-section-title">🔗 Related Problems</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {problem.relatedProblems?.length === 0 ? (
+              {(!problem.relatedProblems || problem.relatedProblems.length === 0) ? (
                 <span className="muted-text" style={{ fontSize: "12px" }}>No related problems found.</span>
               ) : (
-                problem.relatedProblems?.map(rp => (
+                (Array.isArray(problem.relatedProblems) ? problem.relatedProblems : []).map(rp => (
                   <div key={rp.id} className="team-item-row" style={{ cursor: "pointer", borderBottom: "1px solid var(--border-light)", paddingBottom: "6px" }} onClick={() => navigate(`/problems/${rp.id}`)}>
                     <div>
                       <strong style={{ fontSize: "12px", color: "var(--primary)" }}>{rp.title}</strong>
@@ -285,13 +285,13 @@ export default function ProblemDetails() {
               <div>
                 <span className="lc-tag-label" style={{ fontSize: "11px" }}>Topic Tags</span>
                 <div className="lc-tags" style={{ marginTop: "6px" }}>
-                  {problem.tags?.map(t => (
+                  {(Array.isArray(problem.tags) ? problem.tags : []).map(t => (
                     <span key={t} className="lc-tag" style={{ cursor: "pointer" }} onClick={() => navigate(`/problems?tag=${t}`)}>{t}</span>
                   ))}
                 </div>
               </div>
 
-              {problem.companies && problem.companies.length > 0 && (
+              {Array.isArray(problem.companies) && problem.companies.length > 0 && (
                 <div>
                   <span className="lc-tag-label" style={{ fontSize: "11px" }}>Asked by Companies</span>
                   <div className="company-chips-row" style={{ marginTop: "6px" }}>

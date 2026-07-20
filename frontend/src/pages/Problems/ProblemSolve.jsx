@@ -84,8 +84,29 @@ export default function ProblemSolve() {
   const [subSort, setSubSort] = useState("NEWEST");
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
 
+  const [activePanelTab, setActivePanelTab] = useState("editor"); // "description", "editor", "console"
+
   // Auto-save timer reference
   const autoSaveTimerRef = useRef(null);
+
+  // Refs to avoid stale closures in keyboard shortcuts
+  const handleSubmitRef = useRef(null);
+  const handleRunRef = useRef(null);
+
+  const handleEditorDidMount = (editor, monaco) => {
+    // Ctrl+Enter to submit
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => {
+      if (handleSubmitRef.current) {
+        handleSubmitRef.current();
+      }
+    });
+    // Ctrl+' to run code
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.US_QUOTE, () => {
+      if (handleRunRef.current) {
+        handleRunRef.current();
+      }
+    });
+  };
 
   const fetchProblemSubmissions = useCallback(async () => {
     try {
@@ -288,6 +309,14 @@ export default function ProblemSolve() {
     }
   };
 
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmitCode;
+  }, [handleSubmitCode]);
+
+  useEffect(() => {
+    handleRunRef.current = handleRunCode;
+  }, [handleRunCode]);
+
   const examples = useMemo(() => {
     if (!problem) return [];
     try {
@@ -329,6 +358,28 @@ export default function ProblemSolve() {
   return (
     <div className="problems-solve-ide-workspace" style={{ display: "grid", gridTemplateColumns: "1.1fr 1.5fr 1fr", height: "calc(100vh - 100px)", background: "var(--background)" }}>
       
+      {/* MOBILE/TABLET TABS SELECTOR */}
+      <div className="mobile-workspace-tabs" style={{ display: "none" }}>
+        <button 
+          className={`mobile-tab-btn ${activePanelTab === "description" ? "active" : ""}`}
+          onClick={() => setActivePanelTab("description")}
+        >
+          📖 Description
+        </button>
+        <button 
+          className={`mobile-tab-btn ${activePanelTab === "editor" ? "active" : ""}`}
+          onClick={() => setActivePanelTab("editor")}
+        >
+          💻 Editor
+        </button>
+        <button 
+          className={`mobile-tab-btn ${activePanelTab === "console" ? "active" : ""}`}
+          onClick={() => setActivePanelTab("console")}
+        >
+          📊 Console
+        </button>
+      </div>
+
       <AnimatePresence>
         {toastMessage && (
           <motion.div className="problems-toast" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} style={{ zIndex: 1100 }}>
@@ -338,7 +389,7 @@ export default function ProblemSolve() {
       </AnimatePresence>
 
       {/* LEFT PANEL: Problem description, examples, constraints */}
-      <div className="ide-panel-left" style={{ borderRight: "1px solid var(--border)", overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px", background: "var(--surface)" }}>
+      <div className={`ide-panel-left ${activePanelTab === "description" ? "mobile-show" : "mobile-hide"}`} style={{ borderRight: "1px solid var(--border)", overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: "16px", background: "var(--surface)" }}>
         
         <button className="lc-admin-p-btn" onClick={() => navigate(`/problems/${id}`)} style={{ width: "fit-content" }}>
           ← Back to Problem Details
@@ -383,7 +434,7 @@ export default function ProblemSolve() {
       </div>
 
       {/* CENTER PANEL: Monaco editor & config options */}
-      <div className="ide-panel-center" style={{ display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)", background: "var(--background)" }}>
+      <div className={`ide-panel-center ${activePanelTab === "editor" ? "mobile-show" : "mobile-hide"}`} style={{ display: "flex", flexDirection: "column", borderRight: "1px solid var(--border)", background: "var(--background)" }}>
         
         {/* Editor controls headers */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
@@ -453,6 +504,7 @@ export default function ProblemSolve() {
               setCode(val);
               triggerAutoSave(val, language);
             }}
+            onMount={handleEditorDidMount}
             options={{
               fontSize: fontSize,
               fontFamily: "'JetBrains Mono', monospace",
@@ -485,7 +537,7 @@ export default function ProblemSolve() {
       </div>
 
       {/* RIGHT PANEL: Custom input / execution console results */}
-      <div className="ide-panel-right" style={{ display: "flex", flexDirection: "column", background: "var(--surface)" }}>
+      <div className={`ide-panel-right ${activePanelTab === "console" ? "mobile-show" : "mobile-hide"}`} style={{ display: "flex", flexDirection: "column", background: "var(--surface)" }}>
         
         {/* Toggle headers tabs */}
         <div style={{ display: "flex", background: "var(--background)", borderBottom: "1px solid var(--border)" }}>
@@ -710,7 +762,7 @@ export default function ProblemSolve() {
                       </div>
 
                       {/* Display test case results list if present */}
-                      {execResult.results && execResult.results.length > 0 && (
+                      {Array.isArray(execResult.results) && execResult.results.length > 0 && (
                         <>
                           <div className="lc-tc-tabs">
                             {execResult.results.map((res, i) => (

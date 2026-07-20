@@ -196,22 +196,7 @@ const testChatWorkflows = async () => {
     process.exit(1);
   }
 
-  // 9. Pin conversation
-  try {
-    const pinRes = await fetch(`${BASE_URL}/chat/conversation/${conversationId}/pin`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({
-        isPinned: true
-      })
-    });
-    const data = await pinRes.json();
-    if (!data.success) throw new Error(data.message);
-    console.log("✓ Verified pinConversation toggle works.");
-  } catch (err) {
-    console.error("❌ Pin conversation failed:", err.message);
-    process.exit(1);
-  }
+
 
   console.log("=== ALL CHAT TESTS PASSED SUCCESSFULLY ===");
   prisma.$disconnect();

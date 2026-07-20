@@ -53,12 +53,13 @@ export const getMessages = async (conversationId) => {
 };
 
 export const sendMessage = async (conversationId, text, fileUrl = null, fileType = null, codeLanguage = null) => {
-  const response = await api.post(`/chat/message/${conversationId}`, {
-    text,
-    fileUrl,
-    fileType,
-    codeLanguage,
-  });
+  const payload = {};
+  if (text !== null && text !== undefined) payload.text = text;
+  if (fileUrl !== null && fileUrl !== undefined) payload.fileUrl = fileUrl;
+  if (fileType !== null && fileType !== undefined) payload.fileType = fileType;
+  if (codeLanguage !== null && codeLanguage !== undefined) payload.codeLanguage = codeLanguage;
+
+  const response = await api.post(`/chat/message/${conversationId}`, payload);
 
   return response.data.data;
 };

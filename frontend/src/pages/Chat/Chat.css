@@ -13,66 +13,6 @@
   font-family: "Inter", sans-serif;
 }
 
-/* --- COLUMN 1: TEAMMATES PANEL --- */
-.tg-teammates-sidebar {
-  width: 72px;
-  min-width: 72px;
-  background: var(--surface-light, #f7f9fa);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 0;
-  gap: 16px;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-.tg-teammates-sidebar::-webkit-scrollbar {
-  display: none;
-}
-
-.teammates-sidebar-header {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-bottom: 2px solid var(--border);
-  width: 100%;
-  padding-bottom: 8px;
-}
-
-.teammates-avatars-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-  width: 100%;
-}
-
-.teammate-avatar-wrapper {
-  position: relative;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  padding: 2px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-}
-.teammate-avatar-wrapper:hover {
-  transform: scale(1.08);
-}
-.teammate-avatar-wrapper.online {
-  border-color: #22c55e;
-}
-
-.no-teammates-hint {
-  font-size: 20px;
-  opacity: 0.5;
-  margin-top: 20px;
-}
-
 /* --- COLUMN 2: CONVERSATIONS SIDEBAR --- */
 .tg-sidebar {
   width: 280px;
@@ -106,21 +46,7 @@
   letter-spacing: -0.4px;
 }
 
-.tg-conn-badge {
-  font-size: 9px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 99px;
-  text-transform: uppercase;
-}
-.tg-conn-badge--on {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
-}
-.tg-conn-badge--off {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-}
+
 
 .tg-search input {
   width: 100%;
@@ -138,32 +64,13 @@
   border-color: var(--primary);
 }
 
-.sidebar-filters-row {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.sidebar-filters-row::-webkit-scrollbar {
-  display: none;
-}
-
-.filter-badge {
-  padding: 4px 8px;
-  background: var(--background);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  border-radius: 4px;
+.tg-sidebar__section-title {
   font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-.filter-badge.active, .filter-badge:hover {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 12px 16px 6px 16px;
+  letter-spacing: 0.5px;
 }
 
 .tg-sidebar__list {
@@ -730,3 +637,63 @@
   font-weight: 600;
   z-index: 2000;
 }
+
+.tg-char-counter {
+  font-size: 10px;
+  color: var(--text-muted, #9ca3af);
+  align-self: flex-end;
+  margin-top: 2px;
+}
+
+.tg-btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin-chat 0.8s linear infinite;
+}
+
+@keyframes spin-chat {
+  to { transform: rotate(360deg); }
+}
+
+.tg-back-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-right: 4px;
+}
+
+/* Chat Responsive Styling for Desktop, Tablet, and Mobile viewports */
+@media (max-width: 768px) {
+  .tg-back-btn {
+    display: block;
+  }
+
+  .tg-chat {
+    height: calc(100vh - 80px) !important;
+  }
+
+  /* Hide columns 1 and 2 when conversation thread is active */
+  .tg-chat.conv-active .tg-teammates-sidebar,
+  .tg-chat.conv-active .tg-sidebar {
+    display: none !important;
+  }
+
+  /* Hide column 3 when no conversation is active */
+  .tg-chat:not(.conv-active) .tg-main {
+    display: none !important;
+  }
+
+  /* Ensure sidebar expands to occupy full space in inactive mode */
+  .tg-chat:not(.conv-active) .tg-sidebar {
+    width: 100% !important;
+    flex: 1 !important;
+  }
+}
+

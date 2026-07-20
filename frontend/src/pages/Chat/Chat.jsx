@@ -85,8 +85,6 @@ export default function Chat() {
   
   // Search & Filters state
   const [search, setSearch] = useState("");
-  const [msgQuery, setMsgQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("ALL"); // ALL, UNREAD, PRIVATE, TEAMS
   
   // Loading & Action states
   const [loadingConvs, setLoadingConvs] = useState(true);
@@ -153,14 +151,15 @@ export default function Chat() {
     const onMessage = (msg) => {
       const cur = selectedConvRef.current;
       if (cur?.id === msg.conversationId) {
+        // Sender ignores their own message event from socket to avoid race condition/duplication
+        if (msg.senderId === user.id) return;
+
         setMessages((prev) => {
           const safePrev = Array.isArray(prev) ? prev : [];
           if (safePrev.some((m) => m.id === msg.id)) return safePrev;
           return [...safePrev, msg];
         });
-        if (msg.senderId !== user.id) {
-          markConversationSeen(cur.id).catch(() => {});
-        }
+        markConversationSeen(cur.id).catch(() => {});
       }
       loadChatData();
     };
@@ -283,7 +282,7 @@ export default function Chat() {
 
   const handleSend = async () => {
     const trimmed = text.trim();
-    if (!trimmed && !sending) return;
+    if (!trimmed || sending) return;
 
     setText("");
     if (textareaRef.current) {
@@ -292,12 +291,38 @@ export default function Chat() {
     setSending(true);
     if (socket && selectedConv) socket.emit("stop_typing", selectedConv.id);
 
+    const tempId = "temp-" + Date.now();
+    const lang = isCodeSnippetsMode && codeLanguage ? codeLanguage : null;
+
+    // Create optimistic message
+    const optimisticMsg = {
+      id: tempId,
+      conversationId: selectedConv.id,
+      senderId: user.id,
+      text: trimmed,
+      codeLanguage: lang,
+      createdAt: new Date().toISOString(),
+      sender: { id: user.id, name: user.name },
+      reactions: []
+    };
+
+    // Render optimistically
+    setMessages((prev) => [...(Array.isArray(prev) ? prev : []), optimisticMsg]);
+    setTimeout(() => scrollToBottom("smooth"), 50);
+
     try {
-      const lang = isCodeSnippetsMode && codeLanguage ? codeLanguage : null;
-      await apiSendMessage(selectedConv.id, trimmed, null, null, lang);
+      const savedMsg = await apiSendMessage(selectedConv.id, trimmed, null, null, lang);
+      
+      // Replace optimistic message with the database saved message
+      setMessages((prev) =>
+        (Array.isArray(prev) ? prev : []).map((m) => (m.id === tempId ? savedMsg : m))
+      );
       loadChatData();
+      setTimeout(() => scrollToBottom("smooth"), 50);
     } catch (err) {
       console.error("[Chat] send failed:", err);
+      // Remove optimistic message on failure
+      setMessages((prev) => (Array.isArray(prev) ? prev : []).filter((m) => m.id !== tempId));
     } finally {
       setSending(false);
     }
@@ -427,35 +452,33 @@ export default function Chat() {
   // Filtered Conversations List
   const filteredAndSortedConvs = useMemo(() => {
     const safeConvs = Array.isArray(conversations) ? conversations : [];
-    let list = safeConvs.filter((c) => {
+    return safeConvs.filter((c) => {
       const isGroupChat = !!c.teamId;
-      const partner = isGroupChat ? null : c.participants?.find((p) => p.userId !== user?.id)?.user;
+      const participantsList = Array.isArray(c.participants) ? c.participants : [];
+      const partner = isGroupChat ? null : participantsList.find((p) => p.userId !== user?.id)?.user;
       
       const matchesSearch = isGroupChat 
         ? (c.name || "").toLowerCase().includes(search.toLowerCase())
         : (partner?.name || "").toLowerCase().includes(search.toLowerCase());
 
-      if (!matchesSearch) return false;
-
-      // Filter matches
-      if (activeFilter === "UNREAD") return c.unreadCount > 0;
-      if (activeFilter === "PRIVATE") return !isGroupChat;
-      if (activeFilter === "TEAMS") return isGroupChat;
-
-      return true;
+      return matchesSearch;
     });
+  }, [conversations, search, user]);
 
-    return list;
-  }, [conversations, search, activeFilter, user]);
-
-  const sortedTeammates = useMemo(() => {
+  const matchingTeammates = useMemo(() => {
+    if (!search.trim()) return [];
     const safeTeammates = Array.isArray(teammates) ? teammates : [];
-    return [...safeTeammates].sort((a, b) => {
-      const aOnline = isUserOnline(a.id) ? 1 : 0;
-      const bOnline = isUserOnline(b.id) ? 1 : 0;
-      return bOnline - aOnline;
+    const safeConvs = Array.isArray(conversations) ? conversations : [];
+    return safeTeammates.filter((tm) => {
+      const alreadyHasConv = safeConvs.some((c) => {
+        if (c.teamId) return false;
+        const participantsList = Array.isArray(c.participants) ? c.participants : [];
+        return participantsList.some((p) => p.userId === tm.id);
+      });
+      const nameMatches = (tm.name || "").toLowerCase().includes(search.toLowerCase());
+      return nameMatches && !alreadyHasConv;
     });
-  }, [teammates, isUserOnline]);
+  }, [teammates, conversations, search]);
 
   const isGroup = selectedConv && !!selectedConv.teamId;
   const partnerUser = isGroup
@@ -463,15 +486,10 @@ export default function Chat() {
     : selectedConv?.participants?.find((p) => p.userId !== user?.id)?.user;
   const chatTitle = isGroup ? (selectedConv.name || "Team Workspace Chat") : (partnerUser?.name || "Developer");
 
-  const filteredMessages = useMemo(() => {
-    const safeMsgs = Array.isArray(messages) ? messages : [];
-    return msgQuery.trim()
-      ? safeMsgs.filter((m) => (m.text || "").toLowerCase().includes(msgQuery.toLowerCase()))
-      : safeMsgs;
-  }, [messages, msgQuery]);
+  const filteredMessages = Array.isArray(messages) ? messages : [];
 
   return (
-    <div className="tg-chat">
+    <div className={`tg-chat ${selectedConv ? "conv-active" : ""}`}>
       <AnimatePresence>
         {toastMessage && (
           <motion.div className="tg-toast" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
@@ -480,62 +498,16 @@ export default function Chat() {
         )}
       </AnimatePresence>
 
-      {/* COLUMN 1: TEAMMATES PANEL */}
-      <aside className="tg-teammates-sidebar">
-        <div className="teammates-sidebar-header" title="Teammates Shortcuts">
-          👥
-        </div>
-        <div className="teammates-avatars-list">
-          {sortedTeammates.map(tm => {
-            const online = isUserOnline(tm.id);
-            return (
-              <div 
-                key={tm.id} 
-                className={`teammate-avatar-wrapper ${online ? "online" : ""}`}
-                onClick={() => startChat(tm)}
-                title={`${tm.name} (${online ? "Online" : "Offline"})`}
-              >
-                <Avatar name={tm.name} online={online} size="md" />
-              </div>
-            );
-          })}
-          {sortedTeammates.length === 0 && (
-            <div className="no-teammates-hint" title="No teammates available">
-              📭
-            </div>
-          )}
-        </div>
-      </aside>
-
       {/* COLUMN 2: CONVERSATIONS SIDEBAR */}
       <aside className="tg-sidebar">
         <div className="tg-sidebar__top">
-          <div className="tg-sidebar__title-row">
-            <h1 className="tg-sidebar__title">Chats</h1>
-            <span className={`tg-conn-badge ${connected ? "tg-conn-badge--on" : "tg-conn-badge--off"}`}>
-              {connected ? "Connected" : "Offline"}
-            </span>
-          </div>
-
+          <h1 className="tg-sidebar__title">Chats</h1>
           <div className="tg-search">
             <input
-              placeholder="Search chats..."
+              placeholder="Search chats or teammates..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-
-          {/* Filters category row */}
-          <div className="sidebar-filters-row">
-            {["ALL", "UNREAD", "PRIVATE", "TEAMS"].map(f => (
-              <button 
-                key={f} 
-                className={`filter-badge ${activeFilter === f ? "active" : ""}`}
-                onClick={() => setActiveFilter(f)}
-              >
-                {f}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -546,6 +518,7 @@ export default function Chat() {
             ))
           ) : (
             <>
+              {/* Existing conversations */}
               {filteredAndSortedConvs.map((conv) => {
                 const isConvGroup = !!conv.teamId;
                 const partner = isConvGroup ? null : conv.participants?.find(p => p.userId !== user?.id)?.user;
@@ -581,9 +554,31 @@ export default function Chat() {
                 );
               })}
 
-              {filteredAndSortedConvs.length === 0 && (
+              {/* Start new DM conversations with teammates */}
+              {matchingTeammates.length > 0 && (
+                <div className="tg-sidebar__section-title">Start a Conversation</div>
+              )}
+              {matchingTeammates.map((tm) => (
+                <button 
+                  key={tm.id}
+                  className="tg-contact"
+                  onClick={() => startChat(tm)}
+                >
+                  <Avatar name={tm.name} online={isUserOnline(tm.id)} />
+                  <div className="tg-contact__body">
+                    <div className="tg-contact__row1">
+                      <span className="tg-contact__name">{tm.name}</span>
+                    </div>
+                    <div className="tg-contact__row2">
+                      <span className="tg-contact__preview">Click to start collaborating</span>
+                    </div>
+                  </div>
+                </button>
+              ))}
+
+              {filteredAndSortedConvs.length === 0 && matchingTeammates.length === 0 && (
                 <div className="tg-sidebar__empty">
-                  <span>💬 No conversations</span>
+                  <span>No chats or teammates found</span>
                 </div>
               )}
             </>
@@ -604,6 +599,13 @@ export default function Chat() {
             {/* Chat Header */}
             <div className="tg-header">
               <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                <button 
+                  className="tg-back-btn" 
+                  onClick={() => setSelectedConv(null)}
+                  title="Back to conversations"
+                >
+                  ←
+                </button>
                 <Avatar 
                   name={chatTitle} 
                   online={isGroup ? false : isUserOnline(partnerUser?.id)} 
@@ -628,16 +630,6 @@ export default function Chat() {
                 </div>
               </div>
 
-              {/* Message Search Input */}
-              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <input 
-                  type="text" 
-                  value={msgQuery} 
-                  onChange={(e) => setMsgQuery(e.target.value)} 
-                  placeholder="Search messages..." 
-                  className="message-search-input"
-                />
-              </div>
             </div>
 
             {/* Messages container list */}
@@ -736,11 +728,11 @@ export default function Chat() {
                             </div>
 
                             {/* Display reactions */}
-                            {msg.reactions && msg.reactions.length > 0 && (
+                            {Array.isArray(msg.reactions) && msg.reactions.length > 0 && (
                               <div className="message-reactions-row">
-                                {Array.from(new Set(msg.reactions.map(r => r.emoji))).map(emoji => {
-                                  const count = msg.reactions.filter(r => r.emoji === emoji).length;
-                                  const userReacted = msg.reactions.some(r => r.userId === user?.id && r.emoji === emoji);
+                                {Array.from(new Set(msg.reactions.filter(r => r && r.emoji).map(r => r.emoji))).map(emoji => {
+                                  const count = msg.reactions.filter(r => r && r.emoji === emoji).length;
+                                  const userReacted = msg.reactions.some(r => r && r.userId === user?.id && r.emoji === emoji);
 
                                   return (
                                     <span 
@@ -824,7 +816,13 @@ export default function Chat() {
                   className="tg-input-bar__textarea"
                   disabled={sending}
                   rows={1}
+                  maxLength={2000}
                 />
+                {text.length > 0 && (
+                  <span className="tg-char-counter">
+                    {text.length}/2000
+                  </span>
+                )}
               </div>
 
               {/* Emoji selector */}
@@ -851,7 +849,7 @@ export default function Chat() {
                 onClick={handleSend} 
                 disabled={(!text.trim() && !sending) || sending}
               >
-                {sending ? "⏳" : "🚀"}
+                {sending ? <div className="tg-btn-spinner" /> : "🚀"}
               </button>
             </div>
           </>
