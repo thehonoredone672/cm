@@ -1,0 +1,60 @@
+.profile-settings-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    padding: 32px;
+    border-radius: var(--radius-md);
+  }
+  
+  .profile-settings-card h3 {
+    font-size: 18px;
+    font-weight: 800;
+    margin: 0 0 20px 0;
+    letter-spacing: -0.3px;
+  }
+  
+  .profile-form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .form-group-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  
+  @media (max-width: 600px) {
+    .form-group-row {
+      grid-template-columns: 1fr;
+    }
+  }
+  
+  .profile-form-grid label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  
+  .profile-form-grid input,
+  .profile-form-grid select,
+  .profile-form-grid textarea {
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--background);
+    border: 1.5px solid var(--border);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    outline: none;
+    font-size: 13px;
+    box-sizing: border-box;
+  }
+  
+  .profile-form-grid input:focus,
+  .profile-form-grid select:focus,
+  .profile-form-grid textarea:focus {
+    border-color: var(--primary);
+  }
+  

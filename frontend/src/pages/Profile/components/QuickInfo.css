@@ -1,0 +1,33 @@
+.quick-info-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    padding: 20px 24px;
+    border-radius: var(--radius-md);
+  }
+  
+  .quick-info-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+  }
+  
+  .metrics-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .metric-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+  }
+  
+  .metric-row span {
+    color: var(--text-secondary);
+  }
+  
+  .metric-row strong {
+    color: var(--text-primary);
+  }
+  

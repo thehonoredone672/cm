@@ -1,10 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getCurrentUser, updateCurrentUser } from "../../services/userService";
 import { getDashboardStats } from "../../services/dashboardService";
 import { getProjects, createProject, updateProject, deleteProject } from "../../services/projectService";
 import { getAllSkills, getMySkills, addSkill, removeSkill } from "../../services/skillService";
 import { getAllInterests, getMyInterests, addInterest, removeInterest } from "../../services/interestService";
+import { getLatestSubmissions } from "../../services/submissionService";
+import ProfileHeader from "./components/ProfileHeader";
+import ProfileCompletion from "./components/ProfileCompletion";
+import StatsGrid from "./components/StatsGrid";
+import SocialLinks from "./components/SocialLinks";
+import QuickInfo from "./components/QuickInfo";
+import EditProfileForm from "./components/EditProfileForm";
+import ChipManager from "./components/ChipManager";
+import SolvesStats from "./components/SolvesStats";
 import "./Profile.css";
 
 // Framer Motion animation configs
@@ -22,6 +31,15 @@ const cardVariants = {
     opacity: 1, 
     y: 0,
     transition: { type: "spring", stiffness: 100, damping: 15 }
+  }
+};
+
+const safeFetch = async (promise, fallback) => {
+  try {
+    return await promise;
+  } catch (err) {
+    console.error("Fetch failed:", err);
+    return fallback;
   }
 };
 
@@ -46,11 +64,13 @@ export default function Profile() {
     profession: "",
     githubUrl: "",
     linkedinUrl: "",
-    profileImage: ""
+    profileImage: "",
+    createdAt: null
   });
 
   // Projects state
   const [projects, setProjects] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState(null);
   const [projectTitle, setProjectTitle] = useState("");
@@ -63,11 +83,9 @@ export default function Profile() {
   // Skills & Interests state
   const [allSkills, setAllSkills] = useState([]);
   const [mySkills, setMySkills] = useState([]);
-  const [skillSearch, setSkillSearch] = useState("");
   
   const [allInterests, setAllInterests] = useState([]);
   const [myInterests, setMyInterests] = useState([]);
-  const [interestSearch, setInterestSearch] = useState("");
 
   // Dashboard & solved stats state
   const [stats, setStats] = useState(null);
@@ -79,14 +97,15 @@ export default function Profile() {
   const loadProfileDetails = async () => {
     try {
       setLoading(true);
-      const [u, dbStats, projs, skillsAll, skillsMy, interestsAll, interestsMy] = await Promise.all([
-        getCurrentUser(),
-        getDashboardStats(),
-        getProjects(),
-        getAllSkills(),
-        getMySkills(),
-        getAllInterests(),
-        getMyInterests()
+      const [u, dbStats, projs, skillsAll, skillsMy, interestsAll, interestsMy, subs] = await Promise.all([
+        safeFetch(getCurrentUser(), {}),
+        safeFetch(getDashboardStats(), {}),
+        safeFetch(getProjects(), []),
+        safeFetch(getAllSkills(), []),
+        safeFetch(getMySkills(), []),
+        safeFetch(getAllInterests(), []),
+        safeFetch(getMyInterests(), []),
+        safeFetch(getLatestSubmissions(), [])
       ]);
 
       setProfile({
@@ -104,7 +123,8 @@ export default function Profile() {
         profession: u.profession || "",
         githubUrl: u.githubUrl || "",
         linkedinUrl: u.linkedinUrl || "",
-        profileImage: u.profileImage || ""
+        profileImage: u.profileImage || "",
+        createdAt: u.createdAt || null
       });
 
       setStats(dbStats);
@@ -113,6 +133,7 @@ export default function Profile() {
       setMySkills(skillsMy);
       setAllInterests(interestsAll);
       setMyInterests(interestsMy);
+      setSubmissions(subs);
 
     } catch (err) {
       console.error(err);
@@ -286,20 +307,45 @@ export default function Profile() {
 
   const cs = stats?.codingSummary || { solvedCount: 0, submissionsCount: 0, successRate: 0, easySolved: 0, mediumSolved: 0, hardSolved: 0 };
 
-  const filteredSkillsOptions = allSkills.filter(s => 
-    s.name.toLowerCase().includes(skillSearch.toLowerCase()) &&
-    !mySkills.some(myS => myS.skillId === s.id)
-  );
-
-  const filteredInterestsOptions = allInterests.filter(i => 
-    i.name.toLowerCase().includes(interestSearch.toLowerCase()) &&
-    !myInterests.some(myI => myI.interestId === i.id)
-  );
+  const recentActivities = useMemo(() => {
+    const list = [];
+    if (Array.isArray(submissions)) {
+      submissions.forEach(sub => {
+        list.push({
+          id: `sub-${sub.id}`,
+          title: `${sub.status === "ACCEPTED" ? "Accepted" : "Attempted"} ${sub.problem?.title || "coding challenge"}`,
+          meta: `Language: ${sub.language} | Runtime: ${sub.executionTime || 0}ms`,
+          date: sub.createdAt
+        });
+      });
+    }
+    if (Array.isArray(mySkills)) {
+      mySkills.forEach(ms => {
+        list.push({
+          id: `skill-${ms.id}`,
+          title: `Added ${ms.skill?.name || "technical"} Skill`,
+          meta: `Proficiency: ${ms.proficiency || "Intermediate"} | Exp: ${ms.yearsOfExperience || 0} years`,
+          date: ms.createdAt
+        });
+      });
+    }
+    if (Array.isArray(projects)) {
+      projects.forEach(p => {
+        list.push({
+          id: `proj-${p.id}`,
+          title: `Showcased Project: ${p.title}`,
+          meta: p.techStack ? p.techStack.join(", ") : "",
+          date: p.createdAt
+        });
+      });
+    }
+    return list.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [submissions, mySkills, projects]);
 
   if (loading) {
     return (
       <div className="profile-loading-wrapper">
-        <div className="skeleton-item hero-skeleton" />
+        <div className="skeleton-item hero-skeleton" style={{ height: "200px", borderRadius: "12px", marginBottom: "24px" }} />
         <div className="skeleton-grid">
           <div className="skeleton-item card-skeleton" />
           <div className="skeleton-item card-skeleton" />
@@ -328,278 +374,80 @@ export default function Profile() {
         )}
       </AnimatePresence>
 
+      <ProfileHeader
+        profile={profile}
+        onEdit={() => {
+          const el = document.getElementById("profile-form-anchor");
+          el?.scrollIntoView({ behavior: "smooth" });
+        }}
+        onShare={() => {
+          navigator.clipboard.writeText(window.location.href);
+          triggerToast("Profile link copied to clipboard!");
+        }}
+      />
+
       <div className="profile-layout-grid">
         
         {/* LEFT COLUMN: Identity & Quick Metrics */}
         <div className="profile-left-column">
           
-          {/* 1. Profile Header Card */}
-          <div className="profile-header-card">
-            <div className="profile-avatar-large">
-              {profile.name ? profile.name.slice(0, 2).toUpperCase() : "U"}
-            </div>
-            <h2>{profile.name}</h2>
-            <span className="profile-email-lbl">{profile.email}</span>
-            <span className="profile-role-badge">{profile.profession || "Developer"}</span>
-            <p className="profile-bio-text">{profile.bio || "Write a brief description in your biography settings."}</p>
-            
-            <div className="college-row">
-              {profile.college ? (
-                <span>🏫 {profile.college} — Year {profile.academicYear || "1"}</span>
-              ) : (
-                <span className="muted-text">Institution not configured</span>
-              )}
-            </div>
+          <ProfileCompletion
+            completionPercentage={calculateCompletion()}
+            missingItems={missingList}
+          />
 
-            <div className="profile-actions-row">
-              <button className="btn-primary" onClick={() => {
-                const el = document.getElementById("profile-form-anchor");
-                el?.scrollIntoView({ behavior: "smooth" });
-              }}>Edit Profile</button>
-              <button className="btn-secondary" onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                triggerToast("Profile link copied to clipboard!");
-              }}>Share Profile</button>
-            </div>
-          </div>
+          <StatsGrid stats={{
+            solvedCount: cs.solvedCount,
+            matchesCount: stats?.matchesCount || 0,
+            teamsJoinedCount: stats?.teamsJoinedCount || 0,
+            projectsCount: projects.length
+          }} />
 
-          {/* 2. Profile Completion Tracker */}
-          <div className="completion-card">
-            <div className="completion-card-header">
-              <h3>Profile Completion</h3>
-              <span className="completion-pct-badge">{calculateCompletion()}%</span>
-            </div>
-            <div className="progress-bar-container">
-              <div className="progress-bar-fill" style={{ width: `${calculateCompletion()}%` }} />
-            </div>
+          <SocialLinks
+            githubUrl={profile.githubUrl}
+            linkedinUrl={profile.linkedinUrl}
+          />
 
-            {missingList.length > 0 ? (
-              <div className="missing-fields-container">
-                <span className="missing-title">Add missing credentials to optimize compatibilities matches:</span>
-                <div className="missing-badges-row">
-                  {missingList.map((item, idx) => (
-                    <span key={idx} className="missing-badge">{item}</span>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <span className="profile-complete-status">✔ Developer identity fully complete!</span>
-            )}
-          </div>
-
-          {/* Social Links Card */}
-          <div className="social-links-card">
-            <h3>Social Links</h3>
-            <div className="social-links-list">
-              {profile.githubUrl ? (
-                <a href={profile.githubUrl} target="_blank" rel="noreferrer" className="social-link-item">
-                  <span>🐈 GitHub Profile</span>
-                  <span className="arrow">➔</span>
-                </a>
-              ) : (
-                <span className="social-link-item inactive">🐈 GitHub: not configured</span>
-              )}
-              {profile.linkedinUrl ? (
-                <a href={profile.linkedinUrl} target="_blank" rel="noreferrer" className="social-link-item">
-                  <span>💼 LinkedIn Profile</span>
-                  <span className="arrow">➔</span>
-                </a>
-              ) : (
-                <span className="social-link-item inactive">💼 LinkedIn: not configured</span>
-              )}
-            </div>
-          </div>
-
-          {/* 9. Matching Summary */}
-          <div className="matching-summary-card">
-            <h3>Match Summary</h3>
-            <div className="match-metrics-list">
-              <div className="metric-row">
-                <span>Total Matches calculated:</span>
-                <strong>{stats?.matchesCount || 0} peers</strong>
-              </div>
-              <div className="metric-row">
-                <span>Streaks Solved:</span>
-                <strong>{cs.streak || 0} days</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* 10. Team Information */}
-          <div className="team-info-card">
-            <h3>Team Directory</h3>
-            <div className="team-metrics-list">
-              <div className="metric-row">
-                <span>Joined Teams:</span>
-                <strong>{stats?.teamsJoinedCount || 0}</strong>
-              </div>
-              <div className="metric-row">
-                <span>Pending Invites:</span>
-                <strong>{stats?.pendingInvites || 0}</strong>
-              </div>
-            </div>
-          </div>
+          <QuickInfo
+            stats={stats}
+            codingSummary={cs}
+          />
 
         </div>
 
         {/* RIGHT COLUMN: Settings Form & Dynamic Skills/Projects Sections */}
         <div className="profile-right-column">
           
-          {/* 3. Personal Information Form */}
-          <div className="profile-settings-card" id="profile-form-anchor">
-            <h3>Personal Information Settings</h3>
-            <form onSubmit={handleProfileSubmit} className="profile-form-grid">
-              <div className="form-group-row">
-                <div>
-                  <label>Display Name</label>
-                  <input type="text" name="name" value={profile.name} onChange={handleProfileChange} required />
-                </div>
-                <div>
-                  <label>Profession Title</label>
-                  <input type="text" name="profession" value={profile.profession} onChange={handleProfileChange} placeholder="e.g. Frontend Engineer" />
-                </div>
-              </div>
+          <EditProfileForm
+            profile={profile}
+            onProfileChange={handleProfileChange}
+            onProfileSubmit={handleProfileSubmit}
+            saving={saving}
+          />
 
-              <div>
-                <label>Bio Statement</label>
-                <textarea rows="3" name="bio" value={profile.bio} onChange={handleProfileChange} placeholder="A short description about your skills..." />
-              </div>
+          <ChipManager
+            title="Technical Skills"
+            subtitle="Add skill tags to feed the matchmaking compatible engine."
+            items={mySkills}
+            options={allSkills}
+            onAddItem={handleAddSkill}
+            onRemoveItem={handleRemoveSkill}
+            searchPlaceholder="Search skills to add..."
+            itemKey="skillId"
+            itemName="skill"
+          />
 
-              <div className="form-group-row">
-                <div>
-                  <label>Education Type</label>
-                  <select name="educationType" value={profile.educationType} onChange={handleProfileChange}>
-                    <option value="SCHOOL">School</option>
-                    <option value="COLLEGE">College</option>
-                    <option value="EMPLOYED">Employed</option>
-                    <option value="SELF_LEARNER">Self Learner</option>
-                  </select>
-                </div>
-                {profile.educationType === "SCHOOL" && (
-                  <div>
-                    <label>School Name</label>
-                    <input type="text" name="schoolName" value={profile.schoolName} onChange={handleProfileChange} />
-                  </div>
-                )}
-                {profile.educationType === "COLLEGE" && (
-                  <div>
-                    <label>College Name</label>
-                    <input type="text" name="college" value={profile.college} onChange={handleProfileChange} />
-                  </div>
-                )}
-                {profile.educationType === "EMPLOYED" && (
-                  <div>
-                    <label>Company Name</label>
-                    <input type="text" name="company" value={profile.company} onChange={handleProfileChange} />
-                  </div>
-                )}
-              </div>
-
-              <div className="form-group-row">
-                <div>
-                  <label>Department / Stream</label>
-                  <input type="text" name="department" value={profile.department} onChange={handleProfileChange} placeholder="e.g. Computer Science" />
-                </div>
-                <div>
-                  <label>Academic Year / Std</label>
-                  <input type="number" name="academicYear" value={profile.academicYear} onChange={handleProfileChange} />
-                </div>
-              </div>
-
-              <div className="form-group-row">
-                <div>
-                  <label>GitHub Profile Url</label>
-                  <input type="url" name="githubUrl" value={profile.githubUrl} onChange={handleProfileChange} placeholder="https://github.com/..." />
-                </div>
-                <div>
-                  <label>LinkedIn Profile Url</label>
-                  <input type="url" name="linkedinUrl" value={profile.linkedinUrl} onChange={handleProfileChange} placeholder="https://linkedin.com/in/..." />
-                </div>
-              </div>
-
-              <button type="submit" className="btn-primary" disabled={saving}>
-                {saving ? "Saving profile..." : "Save Profile Details"}
-              </button>
-            </form>
-          </div>
-
-          {/* 5. Core Technical Skills */}
-          <div className="skills-interests-card">
-            <h3>Technical Skills</h3>
-            <p className="subtitle">Add skill tags to feed the matchmaking compatible engine.</p>
-            
-            {/* Added Skills */}
-            <div className="chips-row">
-              {mySkills.length === 0 ? (
-                <span className="muted-text" style={{ fontSize: "12px" }}>No skills selected.</span>
-              ) : (
-                mySkills.map(s => (
-                  <span key={s.id} className="skill-chip" onClick={() => handleRemoveSkill(s.skillId)}>
-                    {s.skill?.name} <span className="close-x">×</span>
-                  </span>
-                ))
-              )}
-            </div>
-
-            {/* Search Skill Options */}
-            <div style={{ marginTop: "14px" }}>
-              <input
-                type="text"
-                value={skillSearch}
-                onChange={(e) => setSkillSearch(e.target.value)}
-                placeholder="Search skills to add..."
-                className="chip-search-input"
-              />
-              {skillSearch && (
-                <div className="chips-dropdown">
-                  {filteredSkillsOptions.slice(0, 5).map(s => (
-                    <div key={s.id} className="dropdown-item" onClick={() => { handleAddSkill(s.id); setSkillSearch(""); }}>
-                      + {s.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Interests Card */}
-          <div className="skills-interests-card">
-            <h3>Developer Interests</h3>
-            <p className="subtitle">List fields or tech frameworks you want to collaborate on.</p>
-
-            {/* Added Interests */}
-            <div className="chips-row">
-              {myInterests.length === 0 ? (
-                <span className="muted-text" style={{ fontSize: "12px" }}>No interests selected.</span>
-              ) : (
-                myInterests.map(i => (
-                  <span key={i.id} className="interest-chip" onClick={() => handleRemoveInterest(i.interestId)}>
-                    {i.interest?.name} <span className="close-x">×</span>
-                  </span>
-                ))
-              )}
-            </div>
-
-            {/* Search Interests */}
-            <div style={{ marginTop: "14px" }}>
-              <input
-                type="text"
-                value={interestSearch}
-                onChange={(e) => setInterestSearch(e.target.value)}
-                placeholder="Search interests..."
-                className="chip-search-input"
-              />
-              {interestSearch && (
-                <div className="chips-dropdown">
-                  {filteredInterestsOptions.slice(0, 5).map(i => (
-                    <div key={i.id} className="dropdown-item" onClick={() => { handleAddInterest(i.id); setInterestSearch(""); }}>
-                      + {i.name}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <ChipManager
+            title="Developer Interests"
+            subtitle="List fields or tech frameworks you want to collaborate on."
+            items={myInterests}
+            options={allInterests}
+            onAddItem={handleAddInterest}
+            onRemoveItem={handleRemoveInterest}
+            searchPlaceholder="Search interests..."
+            itemKey="interestId"
+            itemName="interest"
+          />
 
           {/* 8. Coding Statistics */}
           <div className="coding-statistics-card">
